@@ -1,32 +1,23 @@
-# HR analytics
+# HR data - attrition analysis
 
-Predicting employee departures /“attrition”/.
+## Project Description
 
-HR analytics helps us interpret organizational data. It finds trends related to people in the data and allows HR to take appropriate steps to keep the organization running smoothly and profitable. Attrition in a corporation is one of the complex challenges that managers and HR professionals have to deal with.
-Interestingly, machine learning models can be implemented to predict potential attrition, helping relevant HR personnel take the necessary steps to retain an employee.
+HR analytics helps us interpret organizational data. It finds trends related to 
+people in the data and allows HR to take appropriate steps to keep the 
+organization running smoothly and profitable. Attrition in a corporation is one 
+of the complex challenges that managers and HR professionals have to deal with.
+The goal of the project is to define the key performance indicators and measure 
+their impact on attrition.
 
-## Tasks to be accomplished:
+## Data description
+Source of data: https://github.com/kflisikowski/analiza_danych_projekt_zespolowy/tree/34e3548f0b249501b67966fad60c367c5fa9df53/HR
 
-### Data cleaning:
-- Removing unnecessary columns.
-- Renaming columns.
-- Removing duplicates.
-- Cleaning of individual columns.
-- Removing NaN values from a data set.
-- Missing and outlier values
-- Check out more transformations
+- Age - Age of the employee
+- Attrition - employee attrition
+- BusinessTravel - how frequently an employee travels for business purpose
 
-### Data visualization:
-- Plot a correlation map for all numeric variables
-- Overtime
-- Marital status
-- Occupational role
-- Gender
-- Education Field
-- Department
-- Business trip
-- Relationship between overtime and age
-- Total number of years of service
-- Education level
-- Number of companies worked
-- Distance from home
+
+## Team
+Norbert Gała
+Stanislau Kakhnouski
+Nazar Ostrowski

@@ -10,9 +10,8 @@ The goal of the project is to define the key performance indicators and measure
 their impact on attrition.
 
 ## Data description
+[Source of data](https://github.com/kflisikowski/analiza_danych_projekt_zespolowy/tree/34e3548f0b249501b67966fad60c367c5fa9df53/HR)
 Dataset contains 1471 observations of HR data, described by 35 features, all features are described below.
-
-Source of data: https://github.com/kflisikowski/analiza_danych_projekt_zespolowy/tree/34e3548f0b249501b67966fad60c367c5fa9df53/HR
 
 ### List of features
 - Age - Age of the employee
@@ -54,5 +53,7 @@ Source of data: https://github.com/kflisikowski/analiza_danych_projekt_zespolowy
 
 ## Team
 Norbert Gała
+
 Stanislau Kakhnouski
+
 Nazar Ostrowski

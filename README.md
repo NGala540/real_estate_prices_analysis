@@ -6,6 +6,7 @@ The purpose of the project, is to analyze the sales and rental prices of apartme
 
 ## About the dataset
 [Data source][(https://github.com/kflisikowski/analiza_danych_projekt_zespolowy/tree/main/Nieruchomosci%20w%20Polsce)
+
 The dataset contains apartment sales and rental offers from 15 largest cities in Poland (Warsaw, Lodz, Krakow, Wroclaw, Poznan, Gdansk, Szczecin, Bydgoszcz, Lublin, Katowice, Bialystok, Czestochowa). The data comes from local websites with apartments for sale. In order to fully capture the neighborhood of each apartment, each listing has been augmented with Open Street Map data with distances to points of interest (POIs). The data is collected monthly and covers the period from August 2023 to June 2024.
 
 ### Files

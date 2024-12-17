@@ -1,17 +1,43 @@
 # Loading data
-setwd("C:/Users/nortg/Desktop/Studia/Magister/Analiza danych/real_state_prices_analysis/analiza_danych_projekt_zespolowy/Nieruchomosci w Polsce/")
-temp = list.files(pattern="^apartments_pl_[0-9]+_[0-9]+\\.csv$")
-myfiles = lapply(temp, read.csv)
-setwd("C:/Users/nortg/Desktop/Studia/Magister/Analiza danych/real_state_prices_analysis/")
+load_data <- function(name_struct) {
+  setwd("C:/Users/nortg/Desktop/Studia/Magister/Analiza danych/real_state_prices_analysis/analiza_danych_projekt_zespolowy/Nieruchomosci w Polsce/")
+  files_names = list.files(pattern="^apartments_pl_[0-9]+_[0-9]+\\.csv$")
+  myfiles = lapply(temp, read.csv)
+  setwd("C:/Users/nortg/Desktop/Studia/Magister/Analiza danych/real_state_prices_analysis/")
 
-# Checking if all files has the same columns
-column_names = colnames(myfiles[[1]])
-for (i in myfiles) {print(sum(!(colnames(i) == column_names)))}
+  # Checking if all files has the same columns
+  column_names = colnames(myfiles[[1]])
+  for (i in 2:length(myfiles)) {
+    cat("Number of columns not in line (1 and", i,") :", 
+          sum(!(colnames(myfiles[[i]]) == column_names)), "\n")
+    }
+  
+  for (i in seq_along(myfiles)) {myfiles[[i]]$month = to_date(files_names[i])}
+  
+  # bind together dataframe
+  return(do.call(rbind, myfiles))
+}
 
-#TODO: 
-# add column with month to each DF
-# bind together dataframe
-# do the same for rent files
+# adding new column to each DF with month
+to_date <- function(primary_date) {
+  date_part <- sub(".*(\\d{4}_\\d{2}).*", "\\1", primary_date)
+  complete_date <- paste0(date_part, "_01")
+  # print(complete_date)
+  
+  parsed_date <- tryCatch(
+    as.Date(complete_date, format = "%Y_%m_%d"),
+    error = function(e) {
+      message("Failed to parse date: ", e)
+      return(NA)
+    }
+  )
+  
+  # print(parsed_date)
+  return(parsed_date)
+}
+
+apartments_sell = load_data("^apartments_pl_[0-9]+_[0-9]+\\.csv$")
+apartments_rent = load_data("^apartments_rent_pl_[0-9]+_[0-9]+\\.csv$")
 
 # Loading Libraries
 if (!require(naniar)) install.packages("naniar")
@@ -27,9 +53,6 @@ library(reshape2)
 
 # summary
 datasummary_skim(HR_data)
-# I still don't understand differance between rate and income
-# PerformanceRating have only two values 3 or 4, majority of which is 3
-# EmployeeCount, StandardHours and Over18 don't differentiate the set
 
 # Outliers
 grubbs_test <- sapply(HR_data[,!names(HR_data) %in% c("Attrition", 

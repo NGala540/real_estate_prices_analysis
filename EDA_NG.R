@@ -1,8 +1,8 @@
 # Loading data
 load_data <- function(name_struct) {
   setwd("C:/Users/nortg/Desktop/Studia/Magister/Analiza danych/real_state_prices_analysis/analiza_danych_projekt_zespolowy/Nieruchomosci w Polsce/")
-  files_names = list.files(pattern="^apartments_pl_[0-9]+_[0-9]+\\.csv$")
-  myfiles = lapply(temp, read.csv)
+  files_names = list.files(pattern=name_struct)
+  myfiles = lapply(files_names, read.csv)
   setwd("C:/Users/nortg/Desktop/Studia/Magister/Analiza danych/real_state_prices_analysis/")
 
   # Checking if all files has the same columns
@@ -51,76 +51,97 @@ library(ggplot2)
 library(outliers)
 library(reshape2)
 
+# getting rid of ids
+apartments_sell <- apartments_sell[, !names(apartments_sell) == "id"]
+
 # summary
-datasummary_skim(HR_data)
+datasummary_skim(apartments_sell)
+datasummary_skim(apartments_rent)
 
 # Outliers
-grubbs_test <- sapply(HR_data[,!names(HR_data) %in% c("Attrition", 
-                                                      "BusinessTravel", 
-                                                      "Department", 
-                                                      "EducationField", 
-                                                      "Gender", 
-                                                      "JobRole", 
-                                                      "MaritalStatus",
-                                                      "OverTime",
-                                                      "Over18")], grubbs.test)
+grubbs_test_sell <- sapply(apartments_sell[,!names(apartments_sell) %in% 
+                                             c("city", 
+                                              "type",
+                                              "ownership",
+                                              "buildingMaterial", 
+                                              "condition", 
+                                              "hasParkingSpace", 
+                                              "hasBalcony", 
+                                              "hasElevator",
+                                              "hasSecurity",
+                                              "hasStorageRoom",
+                                              "id",
+                                              "month")], grubbs.test)
 
-# Due to Grubbs test potentialy we have an outliers in YearsAtCompany, 
-# YearsInCurrentRole and YearsSinceLastPromotion
+# Due to Grubbs test potentialy we have an outliers in floor, floorCount,
+# poiCount, schoolDistance, postOfficeDistance, kinderGartenDistance, 
+# restaurantDistance, pharmacyDistance, price
 
-boxplot(HR_data[c("YearsAtCompany", "YearsInCurrentRole", "YearsSinceLastPromotion")])
-# Outliers seems to be relevant, and shouldn't be deleted or addressed
+boxplot(apartments_sell[c("schoolDistance", "postOfficeDistance", 
+                          "kindergartenDistance", "restaurantDistance", 
+                          "pharmacyDistance")])
+boxplot(apartments_sell[c("floor", "floorCount")])
+boxplot(apartments_sell[c("poiCount")])
+boxplot(apartments_sell[c("price")])
 
+# Outliers seems to be relevant, there is lack of extreme outliers and they 
+# shouldn't be deleted or addressed
+
+# Checking the nature of "other" blanks and replacing them with NA
+apartments_sell[5,"buildingMaterial"]
+apartments_sell[apartments_sell==""] <- NA
 
 # Number of missing data with its ratio in DF
-missing <- data.frame(miss_var_summary(HR_data))
-
-# number off missing futures at once with ratio in DF
-missing_cases <- data.frame(miss_case_table(HR_data))
+missing <- data.frame(miss_var_summary(apartments_sell))
 
 # plotting missing data
-vis_miss(HR_data)
-vis_miss(HR_data, cluster=TRUE, sort_miss = TRUE)
-gg_miss_fct(HR_data[c("MonthlyIncome", "Age", "Attrition")], fct=Attrition)
-gg_miss_upset(HR_data, nsets=3)
+NA_vector <- c("floor", "buildYear", "collegeDistance", "floorCount", 
+               "clinicDistance", "restaurantDistance", "pharmacyDistance", 
+               "postOfficeDistance", "kindergartenDistance", "schoolDistance",
+               "condition", "buildingMaterial", "type", "hasElevator")
+
+gg_miss_upset(apartments_sell, nsets=14)
+gg_miss_upset(apartments_sell[,names(apartments_sell)!="condition"], nsets=13)
+gg_miss_fct(apartments_sell[,c(NA_vector, "city")], fct = city)
 
 # Coding NAs
-HR_data$Age_na <- ifelse(is.na(HR_data$Age), 1, 0)
-HR_data$Attrition_na <- ifelse(is.na(HR_data$Attrition), 1, 0)
-HR_data$MonthlyIncome_na <- ifelse(is.na(HR_data$MonthlyIncome), 1, 0)
+for (i in 1:length(NA_vector)) {
+  col_name <- paste("NA",NA_vector[i], sep="_")
+  apartments_sell[[col_name]] <- ifelse(is.na(apartments_sell[[NA_vector[i]]]), 1, 0)
+}
 
 # Coding categorical values
-HR_data$Attrition <- 
-  HR_data$Attrition %>% 
-  ordered(c("No", "Yes")) %>% 
+apartments_sell$condition <- 
+  apartments_sell$condition %>% 
+  ordered(c("low", "premium")) %>% 
   as.numeric()-1
 
-HR_data$BusinessTravel <- 
-  HR_data$BusinessTravel %>% 
-  ordered(c("Non-Travel", "Travel_Rarely", "Travel_Frequently")) %>% 
-  as.numeric()-1
+yes_no_variables <- c("hasParkingSpace", "hasBalcony", "hasElevator", 
+                      "hasSecurity", "hasStorageRoom")
 
-HR_data$Gender <- 
-  HR_data$Gender %>% 
-  ordered(c("Female", "Male")) %>% 
-  as.numeric()-1
+for (i in 1:length(yes_no_variables)){
+  apartments_sell[[yes_no_variables[i]]] <- 
+    apartments_sell[[yes_no_variables[i]]] %>% 
+    ordered(c("no", "yes")) %>% 
+    as.numeric()-1
+}
 
-HR_data$OverTime <-
-  HR_data$OverTime %>% 
-  ordered(c("No", "Yes")) %>% 
-  as.numeric()-1
+# Heat maps
+exclude_HM <- c("city", "type", "ownership", "buildingMaterial", "month", 
+                "condition", "hasElevator")
 
-# Heat map error :(
-exclude_HM <- c("Age", "Attrition", "MonthlyIncome", "Department",
-                "EducationField","JobRole", "MaritalStatus", "Over18",
-                "EmployeeCount", "EmployeeNumber", "StandardHours")
-
-HR_data[,!names(HR_data) %in% exclude_HM] %>%
-  cor() %>%
+apartments_sell[,!names(apartments_sell) %in% exclude_HM] %>%
+  cor(use = "pairwise.complete.obs") %>%
   round(digits=2) %>%
   melt() %>%
   ggplot(aes(x=Var1, y=Var2, fill=value)) +
-  geom_tile()
+  geom_tile() +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+
+for (i in 1:length(exclude_HM)){
+  gg_miss_fct(apartments_sell[,c(NA_vector, exclude_HM[i])], fct = exclude_HM[i])
+}
+
 
 # Data validation
 if (!require(tidyverse)) install.packages("tidyverse")

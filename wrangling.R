@@ -80,3 +80,17 @@ data$buildYear[is.na(data$buildYear)] <- median_buildYear
 # Impute missing floor values with the median
 median_floor <- median(data$floor, na.rm = TRUE)
 data$floor[is.na(data$floor)] <- median_floor
+
+summary(data)
+
+boxplot(data$price)
+
+# Convert characters to numbers in Boolean columns
+data$hasParkingSpace <- ifelse(data$hasParkingSpace == "yes", 1, 0)
+data$hasBalcony <- ifelse(data$hasBalcony == "yes", 1, 0)
+data$hasElevator <- ifelse(data$hasElevator == "yes", 1, 0)
+data$hasSecurity <- ifelse(data$hasSecurity == "yes", 1, 0)
+data$hasStorageRoom <- ifelse(data$hasStorageRoom == "yes", 1, 0)
+
+
+

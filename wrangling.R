@@ -32,7 +32,6 @@ data_rent <- bind_rows(lapply(
   read.csv))
 
 # Removing the unnecessary columns
-
 data <- data %>% 
   select(-id, -longitude, -latitude)
 
@@ -40,6 +39,8 @@ data_rent <- data_rent %>%
   select(-id, -longitude, -latitude)
 
 colSums(is.na(data))
+
+
 
 nrow(data[complete.cases(data), ])/nrow(data)*100
 
@@ -51,7 +52,6 @@ ggplot(data = data, aes(x = price)) +
        y = "Frequency")
 
 # Looking for negative values in the dataset
-
 any(data < 0)
 sapply(data, function(x) any(x < 0))
 sapply(data, function(x) sum(x < 0, na.rm = TRUE))
@@ -61,8 +61,22 @@ ggplot(data, aes(y = buildYear)) +
   labs(title = "Boxplot of buildYear", y = "Build Year") +
   theme_minimal()
 
+# Creating a histogram to show the distribution of buildYear
 ggplot(data, aes(y=buildYear)) +
   geom_histogram(binwidth=50, color="black") +
-  labs(title = "Scatterplot of buildYear", y = "Build Year") +
+  labs(title = "Histogram of buildYear", y = "Build Year") +
   theme_minimal()
 
+# Creating a histogram to show the distribution of floor
+ggplot(data, aes(y=floor)) +
+  geom_histogram(binwidth=1, color="black") +
+  labs(title = "Histogram of floor", y = "floor") +
+  theme_minimal()
+
+# Impute missing buildYear values with the median
+median_buildYear <- median(data$buildYear, na.rm = TRUE)
+data$buildYear[is.na(data$buildYear)] <- median_buildYear
+
+# Impute missing floor values with the median
+median_floor <- median(data$floor, na.rm = TRUE)
+data$floor[is.na(data$floor)] <- median_floor

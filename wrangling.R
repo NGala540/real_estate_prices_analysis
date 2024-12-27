@@ -2,11 +2,13 @@
 install.packages("tidyverse")
 install.packages("dplyr")
 install.packages("ggplot2")
+install.packages("naniar")
 
 # Attaching the libraries
 library(tidyverse)
 library(dplyr)
 library(ggplot2)
+library(naniar)
 
 # Combining the data into a single data frame with division for rent and buy
 

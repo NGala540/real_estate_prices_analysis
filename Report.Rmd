@@ -13,45 +13,37 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ```{r libraries, include=FALSE}
 if(!require("dplyr")) package.import("dplyr")
+if(!require("naniar")) package.import("naniar")
+if(!require("finalfit")) package.import("finalfit")
+if(!require("lubridate")) package.import("lubridate")
 library(dplyr)
+# install.packages("finalfit")
+library("naniar")
+library("finalfit")
+library("lubridate")
 ```
 
 ## Data import
 
 ```{r import}
-data_2023_08 <- read.csv(file=".\\analiza_danych_projekt_zespolowy\\Nieruchomosci w Polsce\\apartments_pl_2023_08.csv", encoding ="UTF-8", header=TRUE, sep = ",")
-data_2023_08$period <- as.Date("2023-08-01", format="%Y-%m-%d")
-data_2023_09 <- read.csv(file=".\\analiza_danych_projekt_zespolowy\\Nieruchomosci w Polsce\\apartments_pl_2023_09.csv", encoding ="UTF-8", header=TRUE, sep = ",")
-data_2023_09$period <- as.Date("2023-09-01", format="%Y-%m-%d")
-data_2023_10 <- read.csv(file=".\\analiza_danych_projekt_zespolowy\\Nieruchomosci w Polsce\\apartments_pl_2023_10.csv", encoding ="UTF-8", header=TRUE, sep = ",")
-data_2023_10$period <- as.Date("2023-10-01", format="%Y-%m-%d")
-data_2023_11 <- read.csv(file=".\\analiza_danych_projekt_zespolowy\\Nieruchomosci w Polsce\\apartments_pl_2023_11.csv", encoding ="UTF-8", header=TRUE, sep = ",")
-data_2023_11$period <- as.Date("2023-11-01", format="%Y-%m-%d")
-data_2023_12 <- read.csv(file=".\\analiza_danych_projekt_zespolowy\\Nieruchomosci w Polsce\\apartments_pl_2023_12.csv", encoding ="UTF-8", header=TRUE, sep = ",")
-data_2023_12$period <- as.Date("2023-12-01", format="%Y-%m-%d")
-data_2024_01 <- read.csv(file=".\\analiza_danych_projekt_zespolowy\\Nieruchomosci w Polsce\\apartments_pl_2024_01.csv", encoding ="UTF-8", header=TRUE, sep = ",")
-data_2024_01$period <- as.Date("2024-01-01", format="%Y-%m-%d")
-data_2024_02 <- read.csv(file=".\\analiza_danych_projekt_zespolowy\\Nieruchomosci w Polsce\\apartments_pl_2024_02.csv", encoding ="UTF-8", header=TRUE, sep = ",")
-data_2024_02$period <- as.Date("2024-02-01", format="%Y-%m-%d")
-data_2024_03 <- read.csv(file=".\\analiza_danych_projekt_zespolowy\\Nieruchomosci w Polsce\\apartments_pl_2024_03.csv", encoding ="UTF-8", header=TRUE, sep = ",")
-data_2024_03$period <- as.Date("2024-03-01", format="%Y-%m-%d")
-data_2024_04 <- read.csv(file=".\\analiza_danych_projekt_zespolowy\\Nieruchomosci w Polsce\\apartments_pl_2024_04.csv", encoding ="UTF-8", header=TRUE, sep = ",")
-data_2024_04$period <- as.Date("2024-04-01", format="%Y-%m-%d")
-data_2024_05 <- read.csv(file=".\\analiza_danych_projekt_zespolowy\\Nieruchomosci w Polsce\\apartments_pl_2024_05.csv", encoding ="UTF-8", header=TRUE, sep = ",")
-data_2024_05$period <- as.Date("2024-05-01", format="%Y-%m-%d")
-data_2024_06 <- read.csv(file=".\\analiza_danych_projekt_zespolowy\\Nieruchomosci w Polsce\\apartments_pl_2024_06.csv", encoding ="UTF-8", header=TRUE, sep = ",")
-data_2024_06$period <- as.Date("2024-06-01", format="%Y-%m-%d")
-data <- data_2023_08 %>% 
-  bind_rows(data_2023_09) %>% 
-  bind_rows(data_2023_10) %>% 
-  bind_rows(data_2023_11) %>% 
-  bind_rows(data_2023_12) %>% 
-  bind_rows(data_2024_01) %>% 
-  bind_rows(data_2024_02) %>% 
-  bind_rows(data_2024_03) %>% 
-  bind_rows(data_2024_04) %>% 
-  bind_rows(data_2024_05) %>% 
-  bind_rows(data_2024_06)
+get_data <- function (path, files) {
+  complete_data <- c()
+  month <-  as.Date("2023-09-01", format="%Y-%m-%d")
+  for (file in files) {
+    data_f <- read.csv(file=paste(path, "\\", file, sep=""), encoding ="UTF-8", header=TRUE, sep = ",")
+    data_f$period <- month
+    month <- month %m+% months(1)
+    complete_data <- complete_data %>% 
+      bind_rows(data_f)
+  }
+  return(complete_data)
+}
+
+path_to_source_data <- ".\\analiza_danych_projekt_zespolowy\\Nieruchomosci w Polsce"
+list_of_files = list.files(path_to_source_data, pattern="^apartments_pl_.*\\.csv")
+data <- get_data(path_to_source_data, list_of_files)
+
+summary(data$period)
 
 # attach(dane)
 ```
@@ -86,5 +78,10 @@ vis_miss(filter(data, period == as.Date("2024-06-01")))
 
 ```
 
+```{r missed-whole-set}
+
+data %>%
+  missing_plot()
+```
 
 Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.

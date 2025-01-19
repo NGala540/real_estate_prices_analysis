@@ -5,6 +5,7 @@ install.packages("ggplot2")
 install.packages("naniar")
 install.packages("mice")
 install.packages("outliers")
+install.packages("here")
 
 # Attaching the libraries
 library(tidyverse)
@@ -15,22 +16,25 @@ library(plotly)
 library(mice)
 library(outliers)
 library(scales)
+library(here)
 
-# Change the path to files before running the code
-setwd("C:/Users/Naz/Documents/real_estate_prices_analysis")
-getwd()
+# Set working directory
+setwd(here())
+
+# Set universal data path
+data_path <- file.path("analiza_danych_projekt_zespolowy", "Nieruchomosci w Polsce")
 
 # Combining the data into a single data frame with division for rent and buy
 buy <- bind_rows(lapply(
   list.files(
-    path = file.path("C:/Users/Naz/Documents/real_estate_prices_analysis/analiza_danych_projekt_zespolowy/Nieruchomosci w Polsce"),
+    path = data_path,
     pattern = "^apartments_pl_\\d{4}_\\d{2}\\.csv$", 
     full.names = TRUE), 
   read.csv))
 
 rent <- bind_rows(lapply(
   list.files(
-    path = file.path("C:/Users/Naz/Documents/real_estate_prices_analysis/analiza_danych_projekt_zespolowy/Nieruchomosci w Polsce"),
+    path = data_path,
     pattern = "^apartments_rent_pl_\\d{4}_\\d{2}\\.csv$", 
     full.names = TRUE), 
   read.csv))
@@ -184,4 +188,65 @@ complete_rent <- complete_rent %>%
     restaurantDistance = ifelse(is.na(restaurantDistance), median(restaurantDistance, na.rm = TRUE), restaurantDistance),
     collegeDistance = ifelse(is.na(collegeDistance), median(collegeDistance, na.rm = TRUE), collegeDistance),
     kindergartenDistance = ifelse(is.na(kindergartenDistance), median(kindergartenDistance, na.rm = TRUE), kindergartenDistance),
-  ) # No missing values left
+  ) # No missing numeric values left
+
+
+# Columns to check for empty strings in categorical data columns
+cols_to_check <- c("type", "buildingMaterial", "condition", "hasParkingSpace", "hasElevator", "hasBalcony", "hasStorageRoom",
+                   "hasSecurity")
+
+# Check for empty strings (including white spaces)
+sapply(complete_buy[cols_to_check], function(x) sum(x == "" | trimws(x) == ""))
+sapply(complete_rent[cols_to_check], function(x) sum(x == "" | trimws(x) == ""))
+
+# Function to show proportions before and after imputation
+show_proportions <- function(x) {
+  round(prop.table(table(x)) * 100, 2)  # Rounded to 2 decimal places
+}
+
+# Function to impute while maintaining proportions
+proportional_impute <- function(x, seed = 123) {
+  if(is.character(x)) {
+    # Show original proportions (excluding empty values)
+    cat("Original proportions:\n")
+    print(show_proportions(x[x != ""]))
+    
+    # Get proportions (excluding empty values)
+    props <- prop.table(table(x[x != ""]))
+    
+    # Number of missing values
+    n_missing <- sum(x == "")
+    cat("\nNumber of missing values:", n_missing, "\n")
+    
+    # Generate random values based on existing proportions
+    set.seed(seed)
+    replacement_values <- sample(
+      names(props), 
+      size = n_missing, 
+      prob = props, 
+      replace = TRUE
+    )
+    
+    # Replace empty values
+    x[x == ""] <- replacement_values
+    x <- as.factor(x)
+    
+    # Show new proportions
+    cat("\nNew proportions after imputation:\n")
+    print(show_proportions(x))
+    
+    return(x)
+  }
+  return(x)
+}
+
+# Apply the function to buy and rent data sets
+cols_to_impute <- c("type", "buildingMaterial", "condition", "hasParkingSpace", "hasElevator", "hasBalcony", "hasStorageRoom",
+                    "hasSecurity")
+complete_buy[cols_to_impute] <- lapply(complete_buy[cols_to_impute], proportional_impute)
+complete_rent[cols_to_impute] <- lapply(complete_rent[cols_to_impute], proportional_impute)
+
+# Save the data sets with imputed values
+write.csv(complete_buy, "cleanBuy.csv", row.names = FALSE)
+write.csv(complete_rent, "cleanRent.csv", row.names = FALSE)
+

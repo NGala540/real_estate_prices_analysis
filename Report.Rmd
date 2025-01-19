@@ -1,6 +1,6 @@
 ---
 title: "Main report"
-author: "Stanislav Kohnovsky"
+author: "Stanisław Kochnowski"
 date: "2024-12-18"
 output: html_document
 ---
@@ -28,7 +28,7 @@ library("lubridate")
 ```{r import}
 get_data <- function (path, files) {
   complete_data <- c()
-  month <-  as.Date("2023-09-01", format="%Y-%m-%d")
+  month <-  as.Date("2023-08-01", format="%Y-%m-%d")
   for (file in files) {
     data_f <- read.csv(file=paste(path, "\\", file, sep=""), encoding ="UTF-8", header=TRUE, sep = ",")
     data_f$period <- month
@@ -44,7 +44,7 @@ list_of_files = list.files(path_to_source_data, pattern="^apartments_pl_.*\\.csv
 data <- get_data(path_to_source_data, list_of_files)
 
 summary(data$period)
-
+count(filter(data, data$period=="2023-08-01"))
 # attach(dane)
 ```
 
@@ -55,7 +55,7 @@ if(!require("naniar")) package.import("naniar")
 library(naniar)
 ```
 
-```{r missed}
+```{r missed, eval=FALSE, include=FALSE}
 print(paste("Number of missing observations is", sum(is.na(data))))
 print("Percentage of missing values in each column")
 sapply(data, function(x) mean(is.na(x)) * 100)
@@ -65,23 +65,228 @@ data %>%
   miss_var_summary()
 miss_case_summary(data)
 # Visualize missing data
-vis_miss(filter(data, period == as.Date("2023-09-01")))
-vis_miss(filter(data, period == as.Date("2023-10-01")))
-vis_miss(filter(data, period == as.Date("2023-11-01")))
-vis_miss(filter(data, period == as.Date("2023-12-01")))
-vis_miss(filter(data, period == as.Date("2024-01-01")))
-vis_miss(filter(data, period == as.Date("2024-02-01")))
-vis_miss(filter(data, period == as.Date("2024-03-01")))
-vis_miss(filter(data, period == as.Date("2024-04-01")))
-vis_miss(filter(data, period == as.Date("2024-05-01")))
-vis_miss(filter(data, period == as.Date("2024-06-01")))
+# vis_miss(filter(data, period == as.Date("2023-09-01")))
+# vis_miss(filter(data, period == as.Date("2023-10-01")))
+# vis_miss(filter(data, period == as.Date("2023-11-01")))
+# vis_miss(filter(data, period == as.Date("2023-12-01")))
+# vis_miss(filter(data, period == as.Date("2024-01-01")))
+# vis_miss(filter(data, period == as.Date("2024-02-01")))
+# vis_miss(filter(data, period == as.Date("2024-03-01")))
+# vis_miss(filter(data, period == as.Date("2024-04-01")))
+# vis_miss(filter(data, period == as.Date("2024-05-01")))
+# vis_miss(filter(data, period == as.Date("2024-06-01")))
 
 ```
 
 ```{r missed-whole-set}
-
 data %>%
   missing_plot()
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+```{r missed}
+data %>% 
+  ff_glimpse()
+```
+
+```{r}
+columns <- c("floor", "floorCount", "buildYear", "schoolDistance", "clinicDistance", "postOfficeDistance", "kindergartenDistance", "restaurantDistance", "collegeDistance", "pharmacyDistance")
+
+data %>% 
+  missing_pattern(columns)
+```
+
+```{r warning=FALSE}
+
+dependent <- c("latitude")
+group_of_factors_1 <-  c("floor", "floorCount", "buildYear") #, "floor", "floorCount", "buildYear", "schoolDistance", "clinicDistance", "postOfficeDistance", "kindergartenDistance", "restaurantDistance", "collegeDistance", "pharmacyDistance")
+data %>% 
+  missing_pairs(group_of_factors_1, dependent, position = "fill")
+```
+
+The median of the price variable of missing values of BuildYear variable is lower than the median of not missing observations. Conclusion: missing observations are faced more frequently in apartments with lower price. The variable restaurantDistance contains missing observations with higher median of prices than non-missing ones.
+
+BuildYear variable is missing for over 50% of apartments in Częstochowa, while there is minimal number of such observations in Warszawa. collegeDistance data is missing the most in Gdynia and Szczecin.
+
+The missing data are faced more frequently in smaller apartments data on average, however there is an exception - collegeDistance variable.
+
+schoolDistance, clinicDistance, postOfficeDistance, kindergartenDistance, restaurantDistance, collegeDistance, pharmacyDistance variables are missing for more remote from the city center apartments.
+
+The number of missing values in BuildYear variable is greater for each apartment type in this order apartmentBuilding, blockOfFlats, tenement, "".
+
+```{r}
+dependent <- "pharmacyDistance"
+explanatory <- c("type", "squareMeters", "price", "latitude", "longitude", "centreDistance")
+data %>% 
+  missing_compare(dependent, explanatory) %>% 
+    knitr::kable(row.names=FALSE, align = c("l", "l", "r", "r", "r")) # Omit when you run
+```
+
+## Data imputation
+
+```{r}
+library(mice)
+library(ggplot2)
+
+# c("floor", "floorCount", "buildYear", "schoolDistance", "clinicDistance", "postOfficeDistance", "kindergartenDistance", "restaurantDistance", "collegeDistance", "pharmacyDistance"))
+
+imputed_pmm = complete(mice(data, method = "pmm"))$floor
+# imputed_cart <- mice(data, m = 1, method = "cart")
+mice_imputed <- data.frame(
+  imputed_floor = complete(imputed_cart)$floor,
+  imputed_floorCount = complete(imputed_cart)$floorCount,
+  imputed_buildYear = complete(imputed_cart)$buildYear,
+  imputed_schoolDistance = complete(imputed_cart)$schoolDistance,
+  imputed_clinicDistance = complete(imputed_cart)$clinicDistance,
+  imputed_postOfficeDistance = complete(imputed_cart)$postOfficeDistance,
+  imputed_kindergartenDistance = complete(imputed_cart)$kindergartenDistance,
+  imputed_restaurantDistance = complete(imputed_cart)$restaurantDistance,
+  imputed_collegeDistance = complete(imputed_cart)$collegeDistance,
+  imputed_pharmacyDistance = complete(imputed_cart)$pharmacyDistance
+)
+
+imp_data <- data
+imp_data$floor <- mice_imputed$imputed_floor
+imp_data$floorCount <- mice_imputed$imputed_floorCount
+imp_data$buildYear <- mice_imputed$imputed_buildYear
+imp_data$schoolDistance <- mice_imputed$imputed_schoolDistance
+imp_data$clinicDistance <- mice_imputed$imputed_clinicDistance
+imp_data$postOfficeDistance <- mice_imputed$imputed_postOfficeDistance
+imp_data$kindergartenDistance <- mice_imputed$imputed_kindergartenDistance
+imp_data$restaurantDistance <- mice_imputed$imputed_restaurantDistance
+imp_data$collegeDistance <- mice_imputed$imputed_collegeDistance
+imp_data$pharmacyDistance <- mice_imputed$imputed_pharmacyDistance
+
+miss_var_summary(imp_data)
+
+par(mfrow = c(3, 2))
+hist(data$floor)
+hist(mice_imputed$imputed_floor)
+hist(data$floorCount)
+hist(mice_imputed$imputed_floorCount)
+hist(data$buildYear)
+hist(mice_imputed$imputed_buildYear)
+hist(data$schoolDistance)
+hist(mice_imputed$imputed_schoolDistance)
+hist(data$clinicDistance)
+hist(mice_imputed$imputed_clinicDistance)
+hist(data$postOfficeDistance)
+hist(mice_imputed$imputed_postOfficeDistance)
+hist(data$kindergartenDistance)
+hist(mice_imputed$imputed_kindergartenDistance)
+hist(data$restaurantDistance)
+hist(mice_imputed$imputed_restaurantDistance)
+hist(data$collegeDistance)
+hist(mice_imputed$imputed_collegeDistance)
+hist(data$pharmacyDistance)
+hist(mice_imputed$imputed_pharmacyDistance)
+
+# write.csv(imp_data, "imputed_data.csv")
+
+```
+
+## Data validation
+
+```{r}
+library(validate)
+
+rules <- validator(
+                   # variable checks
+                   is.character(ownership),
+                   is.character(city),
+                   is.numeric(squareMeters),
+                   is.numeric(price),
+                   is.numeric(rooms),
+                   # logical rules
+                   squareMeters >= 0, 
+                   rooms > 0, 
+                   floor >= 0, 
+                   in_range(floorCount, 0, 20), 
+                   in_range(buildYear, 1900, 2025),
+                   in_range(latitude, 49.003936, 54.83575),
+                   in_range(longitude, 14.122682, 24.145355),
+                   # missingness
+                   all(!is.na(floor)),
+                   # statistical check
+                   cor(squareMeters, price)>=0.5
+                  )
+
+out <- confront(imp_data, rules)
+summary(out)
+plot(out)
+
+violating(imp_data, out[6:10])
+
+```
+
+## Data visualization
+
+```{r}
+library(ggplot2)
+
+ggplot(imp_data, aes(x = city, y = price)) +
+  geom_boxplot()
+
+
+ggplot(imp_data, aes(x = type, y = price)) +
+  geom_boxplot()
+
+ggplot(imp_data, aes(x = poiCount, y = price)) +
+  geom_point()
+
+ggplot(imp_data, aes(x = longitude, y = latitude, colour = city)) +
+  geom_point()
+
+ggplot(imp_data, aes(x = condition)) +
+  geom_bar()
+
+ggplot(imp_data, aes(price)) + 
+  geom_density(fill = "cornsilk", bw = 2) +
+  facet_wrap(vars(hasStorageRoom))
+
+```
+
+## Descriptive statistics
+
+### Basic functions
+
+```{r}
+# data %>%
+#   group_by(city) %>%
+#   summarise(Count = n())
+# 
+# data %>%
+#   group_by(type) %>%
+#   summarise(Count = n())
+# 
+# data %>%
+#   group_by(condition) %>%
+#   summarise(Count = n())
+
+print("Range for price: ")
+print(range(imp_data$price))
+print(paste("Mean for price: ", mean(imp_data$price)))
+print(paste("Median for price: ", median(imp_data$price)))
+print(paste("Standard deviation for price: ", sd(imp_data$price)))
+print(paste("Variance for price: ", var(imp_data$price)))
+print(paste("IQR for price: ", IQR(imp_data$price)))
+sx<-IQR(imp_data$price)/2  #interquartile deviation
+coeff_varx<-sx/median(imp_data$price) #IQR coefficient of variability %
+coeff_varx
+quantile(imp_data$price,probs=c(0,0.1,0.25,0.5,0.75,0.95,1),na.rm=TRUE)
+
+limits <- cut(imp_data$price, seq(min(imp_data$price), max(imp_data$price), by=100000))
+ranged_prices <- table(limits)
+transform(ranged_prices, Rel_Freq=prop.table(Freq), Cum_Freq=cumsum(Freq))
+hist(imp_data$price,prob=TRUE, breaks=seq(min(imp_data$price), max(imp_data$price),by=100000), main="Price", sub="in PLN")
+
+```
+
+### Descriptive Statistics: descr()
+
+```{r}
+# descr(imp_data)
+descr(imp_data,
+      stats     = c("mean", "sd"),
+      transpose = TRUE,
+      headings  = FALSE)
+```

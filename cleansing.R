@@ -6,6 +6,10 @@ install.packages("naniar")
 install.packages("mice")
 install.packages("outliers")
 install.packages("here")
+install.packages("tidyr")
+install.packages("plotly")
+install.packages("corrplot")
+install.packages("grid.extra")
 
 # Attaching the libraries
 library(tidyverse)
@@ -17,6 +21,10 @@ library(mice)
 library(outliers)
 library(scales)
 library(here)
+library(tidyr)
+library(plotly)
+library(gridExtra)
+
 
 # Set working directory
 setwd(here())

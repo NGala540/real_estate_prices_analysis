@@ -1,0 +1,340 @@
+---
+title: "Real estate market analysis"
+author: "Stanisław Kochnowski, Nazar Ostrowski, Norbert Gała"
+date: "`r Sys.Date()`"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Real estate market analysis
+
+## Introduction
+
+TODO: when rest is finished
+
+#### Downloading necessary libraries
+
+```{r message=FALSE, warning=FALSE}
+# Installing the libraries
+if (!require(tidyverse)) install.packages("tidyverse")
+if (!require(dplyr)) install.packages("dplyr")
+if (!require(ggplot2)) install.packages("ggplot2")
+if (!require(naniar)) install.packages("naniar")
+if (!require(mice)) install.packages("mice")
+if (!require(modelsummary)) install.packages("modelsummary")
+if (!require(reshape2)) install.packages("reshape2")
+if (!require(editrules)) install.packages("editrules")
+if (!require(dlookr)) install.packages("dlookr")
+if (!require(editrules)) install.packages("editrules")
+if (!require(VIM)) install.packages("VIM")
+if (!require(deducorrect)) install.packages("deducorrect")
+if (!require(ISLR)) install.packages("ISLR")
+if (!require(outliers)) install.packages("outliers")
+
+# Attaching the libraries
+library(tidyverse)
+library(dplyr)
+library(ggplot2)
+library(naniar)
+library(mice)
+library(modelsummary)
+library(reshape2)
+library(editrules)
+library(dlookr)
+library(editrules)
+library(VIM)
+library(deducorrect)
+library(ISLR)
+library(outliers)
+```
+
+#### Downloading data
+
+```{r}
+# Loading data
+load_data <- function(name_struct) {
+  files_names = 
+    list.files(
+    path = file.path("./analiza_danych_projekt_zespolowy/Nieruchomosci w Polsce"),
+    pattern = name_struct, 
+    full.names = TRUE)
+  myfiles = lapply(files_names, read.csv)
+  
+  for (i in seq_along(myfiles)) {myfiles[[i]]$month = to_date(files_names[i])}
+  
+  # bind together dataframe
+  return(do.call(rbind, myfiles))
+}
+
+# adding new column to each DF with month
+to_date <- function(primary_date) {
+  date_part <- sub(".*(\\d{4}_\\d{2}).*", "\\1", primary_date)
+  complete_date <- paste0(date_part, "_01")
+  
+  parsed_date <- 
+    as.Date(complete_date, format = "%Y_%m_%d")
+  
+  return(parsed_date)
+}
+
+data_buy = load_data("^apartments_pl_[0-9]+_[0-9]+\\.csv$")
+data_rent = load_data("^apartments_rent_pl_[0-9]+_[0-9]+\\.csv$")
+```
+
+## Data Cleansing and Wrangling
+
+Data cleansing and wrangling are essential steps in the data analysis process, ensuring that raw data is transformed into a structured, accurate, and usable format. Data cleansing involves among others handling missing values, outliares and identifying and correcting errors. Data wrangling focuses on reshaping, merging, and transforming datasets to make them suitable for analysis.
+
+The goal of these processes is to enhance data integrity, eliminate inconsistencies, and prepare the dataset for meaningful insights.
+
+#### Removing unnecessary data
+
+id of rows are unique, therefore have no differantiation and analytical value
+
+```{r pressure, echo=FALSE}
+data_buy <- data_buy %>% 
+  select(-id)
+
+data_rent <- data_rent %>% 
+  select(-id)
+```
+
+#### Data summary
+
+```{r}
+data_buy
+data_rent
+```
+
+
+```{r}
+datasummary_skim(data_buy)
+datasummary_skim(data_rent)
+```
+
+#### Checking NAs
+
+After brief exploration of data view we can see that there are some data 
+
+```{r}
+# Checking the nature of "other" blanks and replacing them with NA
+data_buy[5,"buildingMaterial"]
+data_buy[data_buy==""] <- NA
+data_rent[data_rent==""] <- NA
+```
+
+```{r}
+data.frame(miss_var_summary(data_buy))
+data.frame(miss_var_summary(data_rent))
+```
+
+```{r}
+NA_vector_buy <- c("floor", "buildYear", "collegeDistance", "floorCount", 
+               "clinicDistance", "restaurantDistance", "pharmacyDistance", 
+               "postOfficeDistance", "kindergartenDistance", "schoolDistance",
+               "condition", "buildingMaterial", "type", "hasElevator")
+
+gg_miss_upset(data_buy, nsets=14)
+gg_miss_upset(data_buy[,names(data_buy)!="condition"], nsets=13)
+gg_miss_fct(data_buy[,c(NA_vector_buy, "city")], fct = city)
+```
+
+```{r}
+NA_vector_rent <- c("floor", "buildYear", "floorCount", "collegeDistance",
+               "clinicDistance", "restaurantDistance", "pharmacyDistance", 
+               "postOfficeDistance", "kindergartenDistance", "schoolDistance")
+
+gg_miss_upset(data_rent, nsets=10)
+gg_miss_upset(data_rent[,names(data_rent)!="buildYear"], nsets=9)
+gg_miss_fct(data_buy[,c(NA_vector_rent, "city")], fct = city)
+```
+
+```{r}
+# Coding NAs
+NA_data_buy = data_buy
+NA_data_rent = data_rent
+
+for (i in 1:length(NA_vector_buy)) {
+  col_name <- paste("NA",NA_vector_buy[i], sep="_")
+  NA_data_buy[[col_name]] <- ifelse(is.na(NA_data_buy[[NA_vector_buy[i]]]), 1, 0)
+}
+
+for (i in 1:length(NA_vector_rent)) {
+  col_name <- paste("NA",NA_vector_rent[i], sep="_")
+  NA_data_rent[[col_name]] <- ifelse(is.na(NA_data_rent[[NA_vector_rent[i]]]), 1, 0)
+}
+```
+
+```{r}
+# Coding categorical variables
+NA_data_buy$condition <- 
+  NA_data_buy$condition %>% 
+  ordered(c("low", "premium")) %>% 
+  as.numeric()-1
+
+NA_data_rent$condition <- 
+  NA_data_rent$condition %>% 
+  ordered(c("low", "premium")) %>% 
+  as.numeric()-1
+
+yes_no_variables <- c("hasParkingSpace", "hasBalcony", "hasElevator", 
+                      "hasSecurity", "hasStorageRoom")
+
+for (i in 1:length(yes_no_variables)){
+  NA_data_buy[[yes_no_variables[i]]] <- 
+    NA_data_buy[[yes_no_variables[i]]] %>% 
+    ordered(c("no", "yes")) %>% 
+    as.numeric()-1
+  
+  NA_data_rent[[yes_no_variables[i]]] <- 
+    NA_data_rent[[yes_no_variables[i]]] %>% 
+    ordered(c("no", "yes")) %>% 
+    as.numeric()-1
+}
+```
+
+```{r warning=FALSE}
+# Heat maps
+exclude_HM <- c("city", "type", "ownership", "buildingMaterial", "month", 
+                "condition", "hasElevator")
+
+NA_data_buy[,!names(NA_data_buy) %in% exclude_HM] %>%
+  cor(use = "pairwise.complete.obs") %>%
+  round(digits=2) %>%
+  melt() %>%
+  ggplot(aes(x=Var1, y=Var2, fill=value)) +
+  scale_fill_gradient2(low = "red", mid = "#FFDD94", high = "green", midpoint = 0)+
+  geom_tile() +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+
+NA_data_rent[,!names(NA_data_rent) %in% exclude_HM] %>%
+  cor(use = "pairwise.complete.obs") %>%
+  round(digits=2) %>%
+  melt() %>%
+  ggplot(aes(x=Var1, y=Var2, fill=value)) +
+  scale_fill_gradient2(low = "red", mid = "#FFDD94", high = "green", midpoint = 0)+
+  geom_tile() +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+```
+#### Outliers
+
+```{r}
+categorical_var <- c("city", "type", "ownership", "buildingMaterial", "condition", "hasParkingSpace", "hasBalcony", "hasElevator", "hasSecurity", "hasStorageRoom", "id", "month")
+
+# Outliers
+grubbs_test_buy <- 
+  sapply(data_buy[,!names(data_buy) %in% categorical_var], grubbs.test)
+print("p.value of given variable - buy")
+grubbs_test_buy["p.value",]
+
+grubbs_test_rent <- 
+  sapply(data_buy[,!names(data_rent) %in% categorical_var], grubbs.test)
+print("p.value of given variable - rent")
+grubbs_test_rent["p.value",]
+```
+```{r}
+# boxplots buy
+boxplot(data_buy[c("schoolDistance", "postOfficeDistance","kindergartenDistance",
+                   "restaurantDistance", "pharmacyDistance")])
+boxplot(data_buy[c("floor", "floorCount")])
+boxplot(data_buy[c("poiCount")])
+boxplot(data_buy[c("price")])
+```
+```{r}
+# boxplots rent
+boxplot(data_rent[c("schoolDistance", "postOfficeDistance",
+                   "restaurantDistance", "pharmacyDistance")])
+boxplot(data_rent[c("floor", "floorCount")])
+boxplot(data_rent[c("poiCount")])
+boxplot(data_rent[c("price")])
+```
+```{r}
+# Interqunatile Range Method for price outliers
+buy_Q1 <- quantile(data_buy$price, 0.25, na.rm = TRUE)
+buy_Q3 <- quantile(data_buy$price, 0.75, na.rm = TRUE)
+buy_IQR_value <- buy_Q3 - buy_Q1
+buy_lower_bound <- max(0, buy_Q1 - 1.5 * buy_IQR_value)  # Adjust lower bound to 0, because price cannot be negative
+buy_upper_bound <- buy_Q3 + 1.5 * buy_IQR_value
+
+rent_Q1 <- quantile(data_rent$price, 0.25, na.rm = TRUE)
+rent_Q3 <- quantile(data_rent$price, 0.75, na.rm = TRUE)
+rent_IQR_value <- rent_Q3 - rent_Q1
+rent_lower_bound <- max(0, rent_Q1 - 1.5 * rent_IQR_value)  # Adjust lower bound to 0, because price cannot be negative
+rent_upper_bound <- rent_Q3 + 1.5 * rent_IQR_value
+
+# Identify price outliers 
+buy_outliers <- data_buy[data_buy$price < buy_lower_bound | data_buy$price > buy_upper_bound,]
+buy_outliers
+rent_outliers <- data_rent[data_rent$price < rent_lower_bound | data_rent$price > rent_upper_bound,]
+rent_outliers
+```
+```{r}
+# See how many values are outliers related to the original dataset
+print("price outliers related to the original dataset in % - buy")
+round((length(buy_outliers$price)/length(data_buy$price)) * 100,1)
+print("price outliers related to the original dataset in % - rent")
+round((length(rent_outliers$price)/length(data_rent$price)) * 100,1) 
+```
+```{r}
+# Taking a closer look at the rent outliers
+data_rent[data_rent$price == 346, ]
+data_rent[data_rent$price == 23000, ]
+
+```
+
+while 346 for rent sounds small, there's more observations close to this price
+there are 3 observations with this price, all in Warsaw centre with a lot of POI
+
+```{r}
+# Q-Q plot for log-transformed rent prices, as appartment prices are usually log-normally distributed
+qqnorm(log(data_rent$price)) # Some heavy tails here
+qqline(log(data_rent$price))
+
+qqnorm(log(data_buy$price)) # Less heavy tails
+qqline(log(data_buy$price))
+```
+
+
+#### Data vliadation
+
+```{r}
+# Data validation
+RULE <- editfile("RULES.txt")
+violated_buy <- violatedEdits(RULE, data_buy)
+summary(violated_buy)
+plot(violated_buy)
+
+RULE <- editfile("RULES.txt")
+violated_rent <- violatedEdits(RULE, data_rent)
+summary(violated_rent)
+plot(violated_rent)
+```
+
+
+#### Data imputation
+```{r}
+# Create method vector for imp - use "" for variables you don't want to impute
+# meth <- rep("", ncol(data_buy))
+# names(meth) <- colnames(data_buy)
+# meth["buildYear"] <- "cart"
+# meth["floor"] <- "cart"
+
+# Multiple data imputation
+imp <- mice(data_buy, m=3, maxit=3, method="cart")
+
+# Pool results into final dataset
+complete_data_buy <- complete(imp)
+```
+
+```{r}
+data.frame(miss_var_summary(complete_data_buy))
+```
+
+
+```{r}
+write.csv(complete_data_buy,"clean_buy.csv")
+```
+ 

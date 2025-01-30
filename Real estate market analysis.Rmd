@@ -315,6 +315,30 @@ plot(violated_rent)
 
 
 #### Data imputation
+
+```{r}
+# TODO: code text variables to numbers:
+# - condition -
+# low
+# premium
+
+# - buildingMaterial -
+# brick
+# concreteSlab
+
+# - Type -
+# apartmentBuilding
+# blockOfFlats
+# tenement
+
+# - hasElevator -
+# Yes
+# No
+
+data_buy$condition <- 
+```
+
+
 ```{r}
 # Create method vector for imp - use "" for variables you don't want to impute
 # meth <- rep("", ncol(data_buy))

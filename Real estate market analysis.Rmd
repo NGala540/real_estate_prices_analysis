@@ -527,9 +527,63 @@ Statistical tests are conducted to determine whether observed data patterns are 
 The main purpose of the statistical test we are going to perform is to determine which variables have a statistically significant impact on both rent and buy prices.
 
 ```{r}
+# statistical significance of price median differance between cities
+
+Buy %>% 
+  ggbetweenstats(
+    y = price,
+    x = city,
+    bf.message = FALSE,
+    pairwise.display = "none",
+    title = "Distribution of price across cities"
+  )
+
+Rent %>% 
+  ggbetweenstats(
+    y=price,
+    x=city,
+    bf.message = FALSE,
+    pairwise.display = "none",
+    title = "Distribution of price length across cities"
+  )
 
 ```
 
+```{r}
+#todo: statistical significance between Amentatiies
+
+#amentities <- c("hasBalcony", "hasElevator", "hasParkingSpace", "hasStorageRoom", "hasSecurity")
+#for (i in amentities) {
+  Buy %>%
+    ggbetweenstats(
+      y = price,
+      x = hasBalcony,
+      bf.message = FALSE,
+      palette = "Dark2",
+      title = "Price Distribution by Amenities"
+    )
+#}
+  Buy %>%
+    ggbetweenstats(
+      y = price,
+      x = hasBalcony,
+      bf.message = FALSE,
+      palette = "Dark2",
+      title = "Price Distribution by Amenities"
+    )
+
+#todo: statistical significance between condition
+  Rent %>%
+  ggbetweenstats(
+    y = price,
+    x = condition,
+    bf.message = FALSE,
+    palette = "Dark2",
+    title = "Price difference by condition"
+  )
+
+#todo: Anova
+```
 
 
 

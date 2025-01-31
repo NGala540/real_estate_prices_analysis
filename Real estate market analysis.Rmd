@@ -33,6 +33,7 @@ if (!require(VIM)) install.packages("VIM")
 if (!require(deducorrect)) install.packages("deducorrect")
 if (!require(ISLR)) install.packages("ISLR")
 if (!require(outliers)) install.packages("outliers")
+if (!require(ggstatsplot)) install.packages("ggstatsplot")
 
 # Attaching the libraries
 library(tidyverse)
@@ -49,6 +50,10 @@ library(VIM)
 library(deducorrect)
 library(ISLR)
 library(outliers)
+library(ggstatsplot)
+library(RColorBrewer)
+library(viridis)
+library(rlang)
 ```
 
 ### Downloading data
@@ -529,64 +534,94 @@ The main purpose of the statistical test we are going to perform is to determine
 ```{r}
 # statistical significance of price median differance between cities
 
-Buy %>% 
+palette_colors <- viridis(length(unique(complete_data_buy$city)))
+
+complete_data_buy %>% 
   ggbetweenstats(
     y = price,
     x = city,
     bf.message = FALSE,
     pairwise.display = "none",
-    title = "Distribution of price across cities"
+    title = "Distribution of buy price across cities - buy dataset",
+    palette = "default_ucscgb",
+    package = "ggsci"
   )
 
-Rent %>% 
+complete_data_rent %>% 
   ggbetweenstats(
     y=price,
     x=city,
     bf.message = FALSE,
     pairwise.display = "none",
-    title = "Distribution of price length across cities"
+    title = "Distribution of rent price across cities - rent dataset",
+    palette = "default_ucscgb",
+    package = "ggsci"
   )
 
 ```
 
+Based on Welch's test, we obtained a p-value close to 0, so we reject the null hypothesis of equal means between populations in both the buy and rent datasets. This means that the city statistically significantly differentiates both rent and buy prices. However, an effect size of 0.86 implies that this differentiation has a moderate magnitude..
+
 ```{r}
-#todo: statistical significance between Amentatiies
+amentities <- c("hasBalcony", "hasElevator", "hasParkingSpace", "hasStorageRoom", "hasSecurity")
+for (i in amentities) {
+  print(
+    complete_data_buy %>%
+      ggbetweenstats(
+        y = price,
+        x = !!sym(i),
+        bf.message = FALSE,
+        palette = "default_ucscgb",
+        package = "ggsci",
+        title = paste("Buy Price Distribution by", i)
+      )
+  )
+}
+```
 
-#amentities <- c("hasBalcony", "hasElevator", "hasParkingSpace", "hasStorageRoom", "hasSecurity")
-#for (i in amentities) {
-  Buy %>%
-    ggbetweenstats(
-      y = price,
-      x = hasBalcony,
-      bf.message = FALSE,
-      palette = "Dark2",
-      title = "Price Distribution by Amenities"
-    )
-#}
-  Buy %>%
-    ggbetweenstats(
-      y = price,
-      x = hasBalcony,
-      bf.message = FALSE,
-      palette = "Dark2",
-      title = "Price Distribution by Amenities"
-    )
+All amenities appear to statistically significantly differentiate buy price, but their effect sizes are small, ranging from -0.14 for a balcony to -0.57 for an elevator.
 
-#todo: statistical significance between condition
-  Rent %>%
+```{r}
+for (i in amentities) {
+  print(
+    complete_data_rent %>%
+      ggbetweenstats(
+        y = price,
+        x = !!sym(i),
+        bf.message = FALSE,
+        palette = "default_ucscgb",
+        package = "ggsci",
+        title = paste("Rent Price Distribution by", i)
+      )
+  )
+}
+```
+
+Similarly to buy prices, all amenities appear to statistically significantly differentiate buy price, but their effect sizes are small, ranging from -0.10 for a balcony to -0.31 for an elevator.
+
+```{r}
+complete_data_buy %>%
   ggbetweenstats(
     y = price,
     x = condition,
     bf.message = FALSE,
-    palette = "Dark2",
-    title = "Price difference by condition"
+    palette = "default_ucscgb",
+    package = "ggsci",
+    title = "Buy price difference by condition"
   )
 
-#todo: Anova
+complete_data_rent %>%
+  ggbetweenstats(
+    y = price,
+    x = condition,
+    bf.message = FALSE,
+    palette = "default_ucscgb",
+    package = "ggsci",
+    title = "Rent price difference by condition"
+  )
 ```
 
-
-
+Finally, condition of flat in both rent and buy dataset also seem to differenciate price significantly but has only moderate magnitude.
 
 
 

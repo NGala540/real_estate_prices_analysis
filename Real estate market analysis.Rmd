@@ -15,7 +15,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 TODO: when rest is finished
 
-#### Downloading necessary libraries
+### Downloading necessary libraries
 
 ```{r message=FALSE, warning=FALSE}
 # Installing the libraries
@@ -51,18 +51,41 @@ library(ISLR)
 library(outliers)
 ```
 
-#### Downloading data
+### Downloading data
+
+The dataset contains apartment sales and rental offers from 15 largest cities in Poland (Warsaw, Lodz, Krakow, Wroclaw, Poznan, Gdansk, Szczecin, Bydgoszcz, Lublin, Katowice, Bialystok, Czestochowa). The data comes from local websites with apartments for sale. In order to fully capture the neighborhood of each apartment, each listing has been augmented with Open Street Map data with distances to points of interest (POIs). The data is collected monthly and covers the period from August 2023 to June 2024.
+
+#### Files
+
+apartments_pl_YYY_MM.csv - monthly snapshot of sales listings apartments_rent_pl_YYYY_MM.csv - monthly snapshot of rental offers
+
+#### Data fields
+
+-   city - name of the city where the property is located
+-   type - type of building
+-   squareMeters - size of the apartment in square meters
+-   rooms - number of rooms in the apartment
+-   floor / floorCount - floor on which the apartment is located and the total number of floors in the building
+-   buildYear - the year in which the building was built
+-   latitude, longitude - geographical coordinates of the property
+-   centerDistance - distance from the city center in km
+-   poiCount - number of places of interest within a radius of 500m from the apartment (schools, clinics, post office, kindergartens, restaurants, universities, pharmacies)
+-   Distance - distance to the nearest point of interest (schools, clinics, post office
+
+Important data manipulations conducted in this step are adding months of when the data come from to the dataset, and binding files. In the raw state of data, this date is only included in the name of the file, and also we have separate files for each month. 
 
 ```{r}
 # Loading data
 load_data <- function(name_struct) {
   files_names = 
+    # Listing files in the proper location and with given pattern
     list.files(
     path = file.path("./analiza_danych_projekt_zespolowy/Nieruchomosci w Polsce"),
     pattern = name_struct, 
     full.names = TRUE)
   myfiles = lapply(files_names, read.csv)
   
+  # adding column "month", labeling data from which month it was scrapped
   for (i in seq_along(myfiles)) {myfiles[[i]]$month = to_date(files_names[i])}
   
   # bind together dataframe
@@ -92,9 +115,21 @@ The goal of these processes is to enhance data integrity, eliminate inconsistenc
 
 #### Removing unnecessary data
 
-id of rows are unique, therefore have no differantiation and analytical value
+Row IDs are unique and therefore provide no differentiation or analytical value. Additionally, due to the nature of the data, duplicate values are possible. For example, if a property was listed for sale in January but sold in March, it would appear three times—once for each month it was listed.
+
+```{r}
+n_occur_buy <- data.frame(table(data_buy$id))
+n_occur_buy[n_occur_buy$Freq > 1,]
+
+n_occur_rent <- data.frame(table(data_rent$id))
+n_occur_rent[n_occur_rent$Freq > 1,]
+```
+
 
 ```{r pressure, echo=FALSE}
+data_buy <- data_buy[!duplicated(data_buy$id),]
+data_rent <- data_rent[!duplicated(data_rent$id),]
+
 data_buy <- data_buy %>% 
   select(-id)
 
@@ -114,9 +149,9 @@ datasummary_skim(data_buy)
 datasummary_skim(data_rent)
 ```
 
-#### Checking NAs
+A brief exploration of the dataset reveals that both the rent and buy datasets share the same 28 features, which include both categorical and continuous variables. The buy dataset contains 92 967 unique records, while the rent dataset has 37 941 unique records. An interesting observation is that the data includes not only missing values (NAs) but also different type of blank entries, which will be addressed in the next section.
 
-After brief exploration of data view we can see that there are some data
+#### Checking NAs
 
 ```{r}
 # Checking the nature of "other" blanks and replacing them with NA
@@ -129,29 +164,38 @@ data_rent[data_rent==""] <- NA
 data.frame(miss_var_summary(data_buy))
 data.frame(miss_var_summary(data_rent))
 ```
+both datasets have some serius problems with missing data, especially in condition and building material
 
 ```{r}
+# Upset plot of missing data and number of missings by a city - buy dataset
 NA_vector_buy <- c("floor", "buildYear", "collegeDistance", "floorCount", 
                "clinicDistance", "restaurantDistance", "pharmacyDistance", 
                "postOfficeDistance", "kindergartenDistance", "schoolDistance",
                "condition", "buildingMaterial", "type", "hasElevator")
 
 gg_miss_upset(data_buy, nsets=14)
-gg_miss_upset(data_buy[,names(data_buy)!="condition"], nsets=13)
 gg_miss_fct(data_buy[,c(NA_vector_buy, "city")], fct = city)
 ```
+An analysis of missing values in the 'buy' dataset using an upset plot reveals some connections between condition, building material, and type. However, given the scale of missing values in these features, their mutual occurrence does not appear to be significant. On the other hand, in Gdańsk and Gdynia, the 'condition' attribute is missing more frequently than in other cities, while in Częstochowa, the 'build year' is notably absent more often.
+
 
 ```{r}
-NA_vector_rent <- c("floor", "buildYear", "floorCount", "collegeDistance",
+# Upset plot of missing data and number of missings by a city - rent dataset
+NA_vector_rent <- c("condition", "floor", "buildYear", "floorCount", "collegeDistance",
                "clinicDistance", "restaurantDistance", "pharmacyDistance", 
                "postOfficeDistance", "kindergartenDistance", "schoolDistance")
 
 gg_miss_upset(data_rent, nsets=10)
-gg_miss_upset(data_rent[,names(data_rent)!="buildYear"], nsets=9)
-gg_miss_fct(data_buy[,c(NA_vector_rent, "city")], fct = city)
+gg_miss_fct(data_rent[,c(NA_vector_rent, "city")], fct = city)
 ```
+A similar pattern is observed in the 'rent' dataset. Once again, some connections between condition, building material, and type are visible, but they do not appear to be significant. In this case, missing condition data is noticeable not only in Gdańsk and Gdynia but also in Częstochowa, where the 'build year' attribute is also frequently missing.
 
-```{r}
+In the next steps will be checked correlation between NAs and other variable, for this purpose we will conduct below steps:
+- code NAs to 1 (in case of NA) and 0
+- code binar, categorical variables
+- exclude non binar variables
+
+```{r warning=FALSE}
 # Coding NAs
 NA_data_buy = data_buy
 NA_data_rent = data_rent
@@ -165,9 +209,7 @@ for (i in 1:length(NA_vector_rent)) {
   col_name <- paste("NA",NA_vector_rent[i], sep="_")
   NA_data_rent[[col_name]] <- ifelse(is.na(NA_data_rent[[NA_vector_rent[i]]]), 1, 0)
 }
-```
 
-```{r}
 # Coding categorical variables
 NA_data_buy$condition <- 
   NA_data_buy$condition %>% 
@@ -193,33 +235,53 @@ for (i in 1:length(yes_no_variables)){
     ordered(c("no", "yes")) %>% 
     as.numeric()-1
 }
-```
 
-```{r warning=FALSE}
-# Heat maps
+# vector of features to exclude
 exclude_HM <- c("city", "type", "ownership", "buildingMaterial", "month", 
                 "condition", "hasElevator")
+
+# Heat maps
+
+selected_features1 <- names(NA_data_buy)[startsWith(names(NA_data_buy), "NA_")]
+selected_features2 <- names(NA_data_buy)[!startsWith(names(NA_data_buy), "NA_")]
 
 NA_data_buy[,!names(NA_data_buy) %in% exclude_HM] %>%
   cor(use = "pairwise.complete.obs") %>%
   round(digits=2) %>%
   melt() %>%
+  filter(Var1 %in% selected_features2 & Var2 %in% selected_features1) %>%
   ggplot(aes(x=Var1, y=Var2, fill=value)) +
+  ggtitle("Correlation matrix witch NA - 'buy' dataset") +
   scale_fill_gradient2(low = "red", mid = "#FFDD94", high = "green", midpoint = 0)+
   geom_tile() +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
 
-NA_data_rent[,!names(NA_data_rent) %in% exclude_HM] %>%
+selected_features1 <- names(NA_data_rent)[startsWith(names(NA_data_rent), "NA_")]
+selected_features2 <- names(NA_data_rent)[!startsWith(names(NA_data_rent), "NA_")]
+  
+NA_data_rent[, !names(NA_data_rent) %in% exclude_HM] %>%
   cor(use = "pairwise.complete.obs") %>%
-  round(digits=2) %>%
+  round(digits = 2) %>%
   melt() %>%
-  ggplot(aes(x=Var1, y=Var2, fill=value)) +
-  scale_fill_gradient2(low = "red", mid = "#FFDD94", high = "green", midpoint = 0)+
+  filter(Var1 %in% selected_features2 & Var2 %in% selected_features1) %>%
+  ggplot(aes(x = Var1, y = Var2, fill = value)) +
+  ggtitle("Correlation matrix witch NA - 'rent' dataset") +
+  scale_fill_gradient2(low = "red", mid = "#FFDD94", high = "green", midpoint = 0) +
   geom_tile() +
-  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
 ```
 
-#### Outliers
+Correlation matrix doesn't show any strong dependencies between missings and other variables
+
+### Outliers
+
+For finding outliers we used couple methods:
+- grubbs test
+- boxplots
+- Interqunatile Range Method
+- Q-Q plot
+
+Since we defined outliers for every feature, we paid speciall attention to price since this is the subject of our reaserch
 
 ```{r}
 categorical_var <- c("city", "type", "ownership", "buildingMaterial", "condition", "hasParkingSpace", "hasBalcony", "hasElevator", "hasSecurity", "hasStorageRoom", "id", "month")
@@ -227,32 +289,54 @@ categorical_var <- c("city", "type", "ownership", "buildingMaterial", "condition
 # Outliers
 grubbs_test_buy <- 
   sapply(data_buy[,!names(data_buy) %in% categorical_var], grubbs.test)
-print("p.value of given variable - buy")
-grubbs_test_buy["p.value",]
+print("variables with p.value lower than 5% - buy")
+grubbs_test_buy["p.value",][grubbs_test_buy["p.value",] < 0.05]
+
+  
 
 grubbs_test_rent <- 
-  sapply(data_buy[,!names(data_rent) %in% categorical_var], grubbs.test)
-print("p.value of given variable - rent")
-grubbs_test_rent["p.value",]
+ sapply(data_buy[,!names(data_rent) %in% categorical_var], grubbs.test)
+print("variables with p.value lower than 5% - rent")
+grubbs_test_buy["p.value",][grubbs_test_buy["p.value",] < 0.05]
 ```
+
+Grubbs test alow us defining features with potential outliers
 
 ```{r}
 # boxplots buy
 boxplot(data_buy[c("schoolDistance", "postOfficeDistance","kindergartenDistance",
-                   "restaurantDistance", "pharmacyDistance")])
-boxplot(data_buy[c("floor", "floorCount")])
-boxplot(data_buy[c("poiCount")])
-boxplot(data_buy[c("price")])
+                   "restaurantDistance", "pharmacyDistance")], 
+        main="boxplot of distances - 'buy' dataset", 
+        cex.axis=0.85)
+boxplot(data_buy[c("floor", "floorCount")], 
+        main="boxplot of floor and floor count - 'buy' dataset", 
+        cex.axis=0.85)
+boxplot(data_buy[c("poiCount")],
+        main="boxplot of number of places within a 500m - 'buy' dataset", 
+        cex.axis=0.85)
+boxplot(data_buy[c("price")],
+        main="boxplot of price - 'buy' dataset", 
+        cex.axis=0.85)
 ```
 
 ```{r}
 # boxplots rent
 boxplot(data_rent[c("schoolDistance", "postOfficeDistance",
-                   "restaurantDistance", "pharmacyDistance")])
-boxplot(data_rent[c("floor", "floorCount")])
-boxplot(data_rent[c("poiCount")])
-boxplot(data_rent[c("price")])
+                   "restaurantDistance", "pharmacyDistance")], 
+        main="boxplot of distances - 'rent' dataset", 
+        cex.axis=0.85)
+boxplot(data_rent[c("floor", "floorCount")], 
+        main="boxplot of floor and floor count - 'rent' dataset", 
+        cex.axis=0.85)
+boxplot(data_rent[c("poiCount")], 
+        main="boxplot of number of places within a 500m - 'rent' dataset", 
+        cex.axis=0.85)
+boxplot(data_rent[c("price")],
+        main="boxplot of price - 'rent' dataset", 
+        cex.axis=0.85)
 ```
+
+The boxplots exhibit a dense concentration of outliers, with no observations noticeably separated from the rest. This suggests that the detected outliers are not due to erroneous data but rather a result of a fat-tailed distribution in the given features.
 
 ```{r}
 # Interqunatile Range Method for price outliers
@@ -269,13 +353,11 @@ rent_lower_bound <- max(0, rent_Q1 - 1.5 * rent_IQR_value)  # Adjust lower bound
 rent_upper_bound <- rent_Q3 + 1.5 * rent_IQR_value
 
 # Identify price outliers 
-buy_outliers <- data_buy[data_buy$price < buy_lower_bound | data_buy$price > buy_upper_bound,]
-buy_outliers
-rent_outliers <- data_rent[data_rent$price < rent_lower_bound | data_rent$price > rent_upper_bound,]
-rent_outliers
-```
+buy_outliers <- 
+  data_buy[data_buy$price < buy_lower_bound | data_buy$price > buy_upper_bound,]
+rent_outliers <- 
+  data_rent[data_rent$price < rent_lower_bound | data_rent$price > rent_upper_bound,]
 
-```{r}
 # See how many values are outliers related to the original dataset
 print("price outliers related to the original dataset in % - buy")
 round((length(buy_outliers$price)/length(data_buy$price)) * 100,1)
@@ -285,12 +367,22 @@ round((length(rent_outliers$price)/length(data_rent$price)) * 100,1)
 
 ```{r}
 # Taking a closer look at the rent outliers
-data_rent[data_rent$price == 346, ]
-data_rent[data_rent$price == 23000, ]
+data_rent[data_rent$price == min(data_rent$price), ]
+data_rent[data_rent$price == max(data_rent$price), ]
 
 ```
 
-while 346 for rent sounds small, there's more observations close to this price there are 3 observations with this price, all in Warsaw centre with a lot of POI
+While 346 PLN for rent may seem low, there are multiple observations close to this price. There are 3 observations with price of 23 000 PLN, all located in the center of Warsaw, where there is a high density of points of interest (POI).
+
+```{r}
+# Taking a closer look at the buy outlier
+data_buy[data_buy$price == min(data_buy$price), ]
+data_buy[data_buy$price == max(data_buy$price), ]
+```
+
+For apartments listed for sale, neither a price of 1,500,000 PLN nor 3,250,000 PLN appears alarming or unusual. There are multiple listings with prices close to these values, suggesting they are within a reasonable range.
+
+An additional confirmation of the price distribution would be a Q-Q plot. Since apartment prices are typically log-normally distributed, a Q-Q plot of log-transformed rent prices would help assess their conformity to this distribution.
 
 ```{r}
 # Q-Q plot for log-transformed rent prices, as appartment prices are usually log-normally distributed
@@ -300,52 +392,55 @@ qqline(log(data_rent$price))
 qqnorm(log(data_buy$price)) # Less heavy tails
 qqline(log(data_buy$price))
 ```
+In our case distributions are fat-tailed.
 
 #### Data vliadation
 
+Data validation ensures data correctness by verifying logical consistency and identifying anomalies. In this dataset, we checked the following properties:
+- Floor number is less than or equal to the total floor count.
+- Build year is less than 2024.
+- Latitude and longitude fall within Poland's geographic range.
+
 ```{r}
 # Data validation
-RULE <- editfile("RULES.txt")
+RULE <- editfile("RULES")
 violated_buy <- violatedEdits(RULE, data_buy)
 summary(violated_buy)
-plot(violated_buy)
 
-RULE <- editfile("RULES.txt")
+RULE <- editfile("RULES")
 violated_rent <- violatedEdits(RULE, data_rent)
 summary(violated_rent)
-plot(violated_rent)
 ```
-
 #### Data imputation
 
+Since there are no incorrect data or outliers, we can proceed with imputing missing values using the MICE method, specifically the classification and regression trees (CART) variation. First, we encode text and categorical variables to make them suitable for imputation. Next, we perform the imputation, verify its success, and finally decode the variables back to their original format.
+
+To avoid retraining the model each time, we will save the imputation results and disable the relevant cells from running in every Markdown execution.
+
 ```{r}
-# TODO: code text variables to numbers:
-# - condition -
-# low
-# premium
-
-# - buildingMaterial -
-# brick
-# concreteSlab
-
-# - Type -
-# apartmentBuilding
-# blockOfFlats
-# tenement
-
-# - hasElevator -
-# Yes
-# No
 
 data_buy$condition <- 
+  data_buy$condition %>% 
+  ordered(c("low", "premium")) %>% 
+  as.numeric()-1 
+
+data_buy$buildingMaterial <- 
+  data_buy$buildingMaterial %>% 
+  ordered(c("brick", "concreteSlab")) %>% 
+  as.numeric()-1 
+
+data_buy$type <- 
+  data_buy$type %>% 
+  ordered(c("apartmentBuilding", "blockOfFlats", "tenement")) %>% 
+  as.numeric()-1 
+
+data_buy$hasElevator <- 
+  data_buy$hasElevator %>% 
+  ordered(c("no", "yes")) %>% 
+  as.numeric()-1 
 ```
 
 ```{r}
-# Create method vector for imp - use "" for variables you don't want to impute
-# meth <- rep("", ncol(data_buy))
-# names(meth) <- colnames(data_buy)
-# meth["buildYear"] <- "cart"
-# meth["floor"] <- "cart"
 
 # Multiple data imputation
 imp <- mice(data_buy, m=3, maxit=3, method="cart")
@@ -357,7 +452,46 @@ complete_data_buy <- complete(imp)
 ```{r}
 data.frame(miss_var_summary(complete_data_buy))
 ```
-
+TODO: decode variables
 ```{r}
 write.csv(complete_data_buy,"clean_buy.csv")
+```
+
+```{r}
+
+data_rent$condition <- 
+  data_buy$condition %>% 
+  ordered(c("low", "premium")) %>% 
+  as.numeric()-1 
+
+data_rent$buildingMaterial <- 
+  data_rent$buildingMaterial %>% 
+  ordered(c("brick", "concreteSlab")) %>% 
+  as.numeric()-1 
+
+data_rent$Type <- 
+  data_rent$Type %>% 
+  ordered(c("apartmentBuilding", "blockOfFlats", "tenement")) %>% 
+  as.numeric()-1 
+
+data_rent$hasElevator <- 
+  data_rent$hasElevator %>% 
+  ordered(c("no", "yes")) %>% 
+  as.numeric()-1
+```
+
+```{r}
+# Multiple data imputation
+imp <- mice(data_rent, m=3, maxit=3, method="cart")
+
+# Pool results into final dataset
+complete_data_rent <- complete(imp)
+```
+
+```{r}
+data.frame(miss_var_summary(complete_data_rent))
+```
+
+```{r}
+write.csv(complete_data_rent,"clean_rent.csv")
 ```

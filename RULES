@@ -1,0 +1,6 @@
+floor <= floorCount
+buildYear <= 2024
+latitude >= 49
+latitude <= 55
+longitude <= 24
+longitude >= 14

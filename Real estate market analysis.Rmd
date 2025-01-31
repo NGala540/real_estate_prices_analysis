@@ -109,7 +109,6 @@ data_buy
 data_rent
 ```
 
-
 ```{r}
 datasummary_skim(data_buy)
 datasummary_skim(data_rent)
@@ -117,7 +116,7 @@ datasummary_skim(data_rent)
 
 #### Checking NAs
 
-After brief exploration of data view we can see that there are some data 
+After brief exploration of data view we can see that there are some data
 
 ```{r}
 # Checking the nature of "other" blanks and replacing them with NA
@@ -219,6 +218,7 @@ NA_data_rent[,!names(NA_data_rent) %in% exclude_HM] %>%
   geom_tile() +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
 ```
+
 #### Outliers
 
 ```{r}
@@ -235,6 +235,7 @@ grubbs_test_rent <-
 print("p.value of given variable - rent")
 grubbs_test_rent["p.value",]
 ```
+
 ```{r}
 # boxplots buy
 boxplot(data_buy[c("schoolDistance", "postOfficeDistance","kindergartenDistance",
@@ -243,6 +244,7 @@ boxplot(data_buy[c("floor", "floorCount")])
 boxplot(data_buy[c("poiCount")])
 boxplot(data_buy[c("price")])
 ```
+
 ```{r}
 # boxplots rent
 boxplot(data_rent[c("schoolDistance", "postOfficeDistance",
@@ -251,6 +253,7 @@ boxplot(data_rent[c("floor", "floorCount")])
 boxplot(data_rent[c("poiCount")])
 boxplot(data_rent[c("price")])
 ```
+
 ```{r}
 # Interqunatile Range Method for price outliers
 buy_Q1 <- quantile(data_buy$price, 0.25, na.rm = TRUE)
@@ -271,6 +274,7 @@ buy_outliers
 rent_outliers <- data_rent[data_rent$price < rent_lower_bound | data_rent$price > rent_upper_bound,]
 rent_outliers
 ```
+
 ```{r}
 # See how many values are outliers related to the original dataset
 print("price outliers related to the original dataset in % - buy")
@@ -278,6 +282,7 @@ round((length(buy_outliers$price)/length(data_buy$price)) * 100,1)
 print("price outliers related to the original dataset in % - rent")
 round((length(rent_outliers$price)/length(data_rent$price)) * 100,1) 
 ```
+
 ```{r}
 # Taking a closer look at the rent outliers
 data_rent[data_rent$price == 346, ]
@@ -285,8 +290,7 @@ data_rent[data_rent$price == 23000, ]
 
 ```
 
-while 346 for rent sounds small, there's more observations close to this price
-there are 3 observations with this price, all in Warsaw centre with a lot of POI
+while 346 for rent sounds small, there's more observations close to this price there are 3 observations with this price, all in Warsaw centre with a lot of POI
 
 ```{r}
 # Q-Q plot for log-transformed rent prices, as appartment prices are usually log-normally distributed
@@ -296,7 +300,6 @@ qqline(log(data_rent$price))
 qqnorm(log(data_buy$price)) # Less heavy tails
 qqline(log(data_buy$price))
 ```
-
 
 #### Data vliadation
 
@@ -312,7 +315,6 @@ violated_rent <- violatedEdits(RULE, data_rent)
 summary(violated_rent)
 plot(violated_rent)
 ```
-
 
 #### Data imputation
 
@@ -338,7 +340,6 @@ plot(violated_rent)
 data_buy$condition <- 
 ```
 
-
 ```{r}
 # Create method vector for imp - use "" for variables you don't want to impute
 # meth <- rep("", ncol(data_buy))
@@ -357,8 +358,6 @@ complete_data_buy <- complete(imp)
 data.frame(miss_var_summary(complete_data_buy))
 ```
 
-
 ```{r}
 write.csv(complete_data_buy,"clean_buy.csv")
 ```
- 

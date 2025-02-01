@@ -220,13 +220,14 @@ gg_miss_fct(data_rent[,c(NA_vector_rent, "city")], fct = city)
 
 A similar pattern is observed in the 'rent' dataset. Once again, some connections between condition, building material, and type are visible, but they do not appear to be significant. In this case, missing condition data is noticeable not only in Gdańsk and Gdynia but also in Częstochowa, where the 'build year' attribute is also frequently missing.
 
-In the next steps will be checked correlation between NAs and other variable, for this purpose we will conduct below steps: 
+In the next steps will be checked correlation between NAs and other variable, for this purpose we will conduct below steps:
 
-- code NAs to 1 (in case of NA) and 0
+-   code NAs to 1 (in case of NA) and 0
 
-- code binary, categorical variables
+-   code binary, categorical variables
 
-- exclude non binar variables
+-   exclude non binar variables
+
 
 ```{r warning=FALSE}
 # Coding NAs
@@ -308,7 +309,13 @@ Correlation matrix doesn't show any strong dependencies between missing and othe
 
 ### Outliers
 
-For finding outliers we used couple methods: - grubbs test - boxplots - Interqunatile Range Method - Q-Q plot
+For finding outliers we used couple methods:
+
+-   grubbs test
+
+-   boxplots
+
+-   Interqunatile Range Method - Q-Q plot
 
 Since we defined outliers for every feature, we paid special attention to price since this is the subject of our research.
 
@@ -425,7 +432,13 @@ In our case distributions are fat-tailed.
 
 #### Data validation
 
-Data validation ensures data correctness by verifying logical consistency and identifying anomalies. In this data set, we checked the following properties: - Floor number is less than or equal to the total floor count. - Build year is less than 2024. - Latitude and longitude fall within Poland's geographic range.
+Data validation ensures data correctness by verifying logical consistency and identifying anomalies. In this data set, we checked the following properties:
+
+-   Floor number is less than or equal to the total floor count.
+
+-   Build year is less than 2024.
+
+-   Latitude and longitude fall within Poland's geographic range.
 
 ```{r}
 # Data validation

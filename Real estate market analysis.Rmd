@@ -228,6 +228,7 @@ In the next steps will be checked correlation between NAs and other variable, fo
 
 -   exclude non binar variables
 
+
 ```{r warning=FALSE}
 # Coding NAs
 NA_data_buy = data_buy

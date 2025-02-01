@@ -39,6 +39,9 @@ if (!require(corrplot)) install.packages("corrplot")
 if (!require(gridExtra)) install.packages("grid.extra")
 if (!require(kableExtra)) install.packages("kable.extra")
 if (!require(plyr)) install.packages("plyr")
+if (!require(summarytools)) install.packages("summarytools")
+if (!require(classInt)) install.packages("classInt")
+if (!require(psych)) install.packages("psych")
 
 # Attaching the libraries
 library(tidyverse)
@@ -64,6 +67,9 @@ library(corrplot)
 library(gridExtra)
 library(kableExtra)
 library(plyr)
+library(summarytools)
+library(classInt)
+library(psych)
 ```
 
 ### Downloading data
@@ -661,7 +667,7 @@ plot_age_rent <- ggplot(complete_rent, aes(x = buildYear, y = price)) +
 grid.arrange(plot_age_buy, plot_age_rent, ncol = 2)
 ```
 
-Interesting things can be observed – model is less certain about the smooth price for apartments for rent built in the 70s, which might suggest there's less of them available for rent. This phenomena is correlated with modern market rules, as the demand on the new apartments is higher. The apartments in very old buildings tend to be very expensive, but there are not many of them. Commie blocks are the least expensive for both rent and purchase. Out of modern buildings those built around 2008 seem to be the most expensive The prices for the newest buildings seem to be falling with each year.
+Interesting things can be observed – model is less certain about the smooth price for apartments for rent built in the 70s, which might suggest there's less of them available for rent. This phenomena is correlated with modern market rules, as the demand on the new apartments is higher. The apartments in very old buildings tend to be very expensive, but there are not many of them. Commie blocks are the least expensive for both rent and purchase. Out of modern buildings those built around 2008 seem to be the most expensive. The prices for the newest buildings seem to be falling with each year.
 
 ```{r}
 ggplot(complete_buy, aes(x = condition, y = price)) +
@@ -675,7 +681,43 @@ There is no significant influence of housing condition on the price level.
 
 ## Descriptive analysis
 
-### Contingency tables
+### Summary statistics
+```{r}
+data_buy <- data_buy %>% 
+  mutate(price_per_m2 = price / squareMeters)
+data_rent <- data_rent %>% 
+  mutate(price_per_m2 = price / squareMeters)
+
+print(dfSummary(data_buy, na.col=FALSE, style="multiline", 
+                plain.ascii=FALSE, headings = FALSE, graph.magnif = .8),
+      method = "render"
+)
+```
+Summary table contains information about every column in the purchase data set. It can be noticed from the table that
+1) Every city occupies different part of the country market;
+2) The most common building type is block of flats, while apartment buildings and tenements occupy ~20% of the market each;
+3) Average housing area (m²) is 58.7, while this variable has right-skewed distribution;
+4) The most widespread are 2 and 3 room apartments, whereas other categories make up under 20% of the total;
+5) The histogram of floor values is falling, which is expected behavior;
+6) There are apartments in buildings build from 1850 to 2024. Average trend is growing, but there are some drops in certain periods.
+7) Distance variables and POI count seem to have right skewed distribution, as public facilities are erected in the most populated areas.
+8) Over 90% of apartments are owned on condominium agreement.
+
+```{r}
+print(dfSummary(data_rent, na.col=FALSE, style="multiline", 
+                plain.ascii=FALSE, headings = FALSE, graph.magnif = .8),
+      method = "render"
+)
+```
+Rental market data in general follow the same trend, however there are some differences:
+2) Apartment buildings are the most common type of building the housing is located in;
+3) Area of the apartments is a bit lower (average 55.3 m²) than in case of purchase market;
+4) Two room apartments are the most represented category with over 55% of items;
+7) The average of build year is higher for rental market (by 12 years), which is explained by higher attractiveness of modern buildings for tenants;
+19) Almost each apartment is declared to be in premium condition.
+
+
+### Share of market by city with contingency tables
 
 ```{r contingency_table1}
 data_buy <- complete_buy
@@ -709,10 +751,11 @@ arrange(table, desc(Share)) %>%
 
 Warsaw has even larger part of the rent market over 40%, growth also noticeable in the market share of Krakow (+3%). Remaining cities have minor shares of this market (under 10%).
 
+### Price distribution shape with tabular data
+
 ```{r contingency_table2}
 # range(data_buy$price)
 
-library(tidyverse)
 limits <- seq(min(data_buy$price)-500000, max(data_buy$price)+500000, by=100000)
 
 limits_factor <- cut(data_buy$price, limits)
@@ -757,7 +800,38 @@ colcode=findColours(tab_accuracy, pcol)
 plot(tab_accuracy, pal=pcol, ylab='Cumulative %')
 
 ```
+The shapes of the rental market distribution is narrower than purchase market one, which can be explained by the target groups of these offers.
 
+```{r}
+pl1 <- data_buy %>%
+  ggplot(aes(x=price_per_m2)) +
+  geom_density(color="#69b3a2", alpha=0.8) +
+  geom_vline(aes(xintercept=median(price_per_m2)), linetype="dashed", size=0.5, color="69b3a2") +
+  annotate("text", x=12000, y=0.00004, label=paste("Median: ", as.character(median(round(data_buy$price_per_m2, 2)))), angle=90, color="69b3a2") +
+  ggtitle("Purchase market") + 
+  labs(x="PLN per square meter", y="Density") +
+  theme_classic() +
+  theme(plot.title = element_text(hjust = 0.5))
+
+pl2 <- data_rent %>%
+  ggplot(aes(x=price_per_m2)) +
+  geom_density(color="#69b3a2", alpha=0.8) +
+  geom_vline(aes(xintercept=median(price_per_m2)), linetype="dashed", size=0.5, color="69b3a2") +
+  annotate("text", x=60, y=0.01, label=paste("Median: ", as.character(median(round(data_rent$price_per_m2, 2)))), angle=90, color="69b3a2") +
+  ggtitle("Rental market") + 
+  labs(x="PLN per square meter", y="Density") +
+  theme_classic() +
+  theme(plot.title = element_text(hjust = 0.5))
+
+
+grid.arrange(pl1+theme(legend.position="top"),
+    pl2+theme(legend.position="top"),
+    ncol = 2,
+    top =textGrob("Price per square meter",gp=gpar(fontsize=20,font=3)))
+```
+Prices per square meter are more similar to the normal distribution.
+
+### Housing type percentage in different cities
 ```{r contingency_table3}
 type_across_cities <- table(data_buy$city, data_buy$type, dnn = c("City", "Type"))
 addmargins(round(prop.table(type_across_cities, 1) * 100, 2), 2) %>% 
@@ -765,7 +839,7 @@ addmargins(round(prop.table(type_across_cities, 1) * 100, 2), 2) %>%
   kable_styling()
 ```
 
-The table shows percentage of housing of the certain type per city. There are cities with higher percentage of apartment buildings (Gdansk, Gdynia, Krakow, Warszawa and Wraclaw), which are characterized by greater market share and higher prices, while in smaller cities with lower prices relative quantity of offers in blocks of flats is higher (Bialystok, Czestohchowa, Lublina, Radom). Nonethless there is a common trend for each of the cities: the majority of housings is offered in blocks of flats, while apartments of buildings and tenemts make up a smaller group of housings.
+The table shows percentage of housing of the certain type per city. There are cities with higher percentage of apartment buildings (Gdansk, Gdynia, Krakow, Warszawa and Wroclaw), which are characterized by greater market share and higher prices, while in smaller cities with lower prices relative quantity of offers in blocks of flats is higher (Bialystok, Czestohchowa, Lublina, Radom). Nonetheless there is a common trend for each of the cities: the majority of housings is offered in blocks of flats, while apartments of buildings and tenements make up a smaller group of housings.
 
 ```{r contingency_table4}
 type_across_cities <- table(data_rent$city, data_rent$type, dnn = c("City", "Type"))
@@ -776,14 +850,7 @@ addmargins(round(prop.table(type_across_cities, 1) * 100, 2), 2) %>%
 
 The situation is somewhat different for the rental market. There is an increase in apartment buildings type offers resulting in an incline in percentage of block of flats. Quantity of offers in tenements is also reduced insignificantly.
 
-### Simple statistics
-
 ```{r statistical_variables}
-data_buy <- data_buy %>% 
-  mutate(price_per_m2 = price / squareMeters)
-data_rent <- data_rent %>% 
-  mutate(price_per_m2 = price / squareMeters)
-
 group_by(data_buy, type) %>%
   reframe(
     mean = mean(price_per_m2),
@@ -839,17 +906,11 @@ grid.arrange(pl1+theme(legend.position="top"),
 
 The most expensive in terms of price per square meter are housings in apartment buildings. Their average price is 26.8% more for blocks of flats and 20.1% for tenements in purchasing, whereas it is 19.38% more for blocks of flats and 6.4% in case of tenements in rental. The smallest standard deviation value for blocks of flats in both markets can be explained by average characteristics of this type of housing: locations and conditions are close in different blocks of flats or apartments, while there are old, cheaper tenements and relatively small amount of the new ones in perfect condition and location so the deviation is significantly larger. Positive values of skewness indicate the tail of the distribution is on the right, which means the amount of more expensive apartments is fading more gradually than the cheaper ones. Kurtosis indicates quite peaked distributions for each category.
 
-```{r}
-ggplot(data_buy, aes(fill=hasElevator, y=price_per_m2, x=type)) + 
-    geom_bar(position="stack", stat="identity")
-
-```
-
-### Mosaic plots
+### Housing type vs building material with mosaic plots
 
 ```{r}
-mosaicplot(table(data_buy$type, data_buy$buildingMaterial), color = c("darkred", "gold"), xlab ="Type of housing", ylab = "Building material", main="The relationship between the type of housing and the construction material (")
-mosaicplot(table(data_rent$type, data_rent$buildingMaterial), color = c("darkred", "gold"), xlab ="Type of housing", ylab = "Building material", main="The relationship between the type of housing and the construction material")
+mosaicplot(table(data_buy$type, data_buy$buildingMaterial), color = c("darkred", "grey"), xlab ="Type of housing", ylab = "Building material", main="The relationship between the type of housing and the construction material (")
+mosaicplot(table(data_rent$type, data_rent$buildingMaterial), color = c("darkred", "grey"), xlab ="Type of housing", ylab = "Building material", main="The relationship between the type of housing and the construction material")
 
 ```
 

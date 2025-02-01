@@ -2,22 +2,52 @@
 title: "Real estate market analysis"
 author: "Nazar Ostrowski, Norbert Gała, Stanisław Kochnowski"
 date: "`r Sys.Date()`"
-output: pdf_document
+output:
+  html_document: 
+    toc: true
+    fig_height: 7
+  pdf_document:
+    toc: true
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = FALSE)
 ```
 
 # Real estate market analysis
 
 ## Introduction
 
-TODO: when rest is finished
+The real estate market plays a crucial role in economic growth, urban development, and investment strategies. Understanding its structure, pricing trends, and key influencing factors is essential for stakeholders, including buyers, investors, and policymakers. This project provides an in-depth analysis of the real estate market using statistical methods and data visualization techniques to extract meaningful insights from the available data.
 
-### Downloading necessary libraries
+The following milestones were outlined during design process:
+
+1.  **Explatory Analysis**: Understanding the format, types, and sources of data.
+
+2.  **Data Cleansing and Wrangling**: Ensuring data accuracy, handling missing values, and standardizing formats.
+
+3.  **Outliers**: Identifying and analyzing unusual price points that may affect overall trends.
+
+4.  **Visualizations**: Graphical representations to facilitate pattern recognition and trend analysis.
+
+5.  **Descriptive Analysis**: Exploring key metrics like mean, median, variance, and skewness, recovered aggregated statistical insights that describe the market dynamics.
+
+6.  **Price Distribution Shape**: Analyzing the distribution of prices through density plots and statistical summaries.
+
+7.  **Statistical Tests**: Assessing the statistical significance of median price differences across cities and investigating the impact of amenities on price variations.
+
+### Objectives
+
+-   Provide a clear understanding of real estate price structures.
+
+-   Identify significant price differentiators and market trends.
+
+-   Utilize statistical techniques to validate insights.
+
+-   Present findings through comprehensive visual and tabular representations.
 
 ```{r message=FALSE, warning=FALSE}
+### Downloading necessary libraries
 # Installing the libraries
 if (!require(tidyverse)) install.packages("tidyverse") 
 if (!require(dplyr)) install.packages("dplyr")
@@ -45,6 +75,7 @@ if (!require(psych)) install.packages("psych")
 if (!require(here)) install.packages("here")
 if (!require(tidyr)) install.packages("tidyr")
 if (!require(plotly)) install.packages("plotly")
+if (!require(egg)) install.packages("egg")
 
 # Attaching the libraries
 library(tidyverse)
@@ -76,9 +107,12 @@ library(psych)
 library(here)
 library(tidyr)
 library(plotly)
+library(egg)
+
+theme_set(theme_classic(base_size = 45))
 ```
 
-### Downloading data
+### Data structure
 
 The dataset contains apartment sales and rental offers from 15 largest cities in Poland (Warsaw, Lodz, Krakow, Wroclaw, Poznan, Gdansk, Szczecin, Bydgoszcz, Lublin, Katowice, Bialystok, Czestochowa). The data comes from local websites with apartments for sale. In order to fully capture the neighborhood of each apartment, each listing has been augmented with Open Street Map data with distances to points of interest (POIs). The data is collected monthly and covers the period from August 2023 to June 2024.
 
@@ -99,7 +133,7 @@ apartments_rent_pl_YYYY_MM.csv - monthly snapshot of rental offers
 -   latitude, longitude - geographical coordinates of the property
 -   centerDistance - distance from the city center in km
 -   poiCount - number of places of interest within a radius of 500m from the apartment (schools, clinics, post office, kindergartens, restaurants, universities, pharmacies)
--   Distance - distance to the nearest point of interest (schools, clinics, post office
+-   Distance - distance to the nearest point of interest (schools, clinics, post office, etc.)
 
 Important data manipulations conducted in this step are adding months of when the data come from to the dataset, and binding files. In the raw state of data, this date is only included in the name of the file, and also we have separate files for each month.
 
@@ -138,7 +172,7 @@ data_rent = load_data("^apartments_rent_pl_[0-9]+_[0-9]+\\.csv$")
 
 ## Data Cleansing and Wrangling
 
-Data cleansing and wrangling are essential steps in the data analysis process, ensuring that raw data is transformed into a structured, accurate, and usable format. Data cleansing involves among others handling missing values, outliares and identifying and correcting errors. Data wrangling focuses on reshaping, merging, and transforming datasets to make them suitable for analysis.
+Data cleansing and wrangling are essential steps in the data analysis process, ensuring that raw data is transformed into a structured, accurate, and usable format. Data cleansing involves among others handling missing values, outliers and identifying and correcting errors. Data wrangling focuses on reshaping, merging, and transforming datasets to make them suitable for analysis.
 
 The goal of these processes is to enhance data integrity, eliminate inconsistencies, and prepare the dataset for meaningful insights.
 
@@ -146,7 +180,7 @@ The goal of these processes is to enhance data integrity, eliminate inconsistenc
 
 Row IDs are unique and therefore provide no differentiation or analytical value. Additionally, due to the nature of the data, duplicate values are possible. For example, if a property was listed for sale in January but sold in March, it would appear three times—once for each month it was listed.
 
-```{r}
+```{r include=FALSE}
 n_occur_buy <- data.frame(table(data_buy$id))
 n_occur_buy[n_occur_buy$Freq > 1,]
 
@@ -167,12 +201,12 @@ data_rent <- data_rent %>%
 
 #### Data summary
 
-```{r}
+```{r eval=FALSE, include=FALSE}
 data_buy
 data_rent
 ```
 
-```{r}
+```{r eval=FALSE, include=FALSE}
 datasummary_skim(data_buy)
 datasummary_skim(data_rent)
 ```
@@ -189,8 +223,8 @@ data_rent[data_rent==""] <- NA
 ```
 
 ```{r}
-data.frame(miss_var_summary(data_buy))
-data.frame(miss_var_summary(data_rent))
+knitr::kable(data.frame(miss_var_summary(data_buy)))
+knitr::kable(data.frame(miss_var_summary(data_rent)))
 ```
 
 both datasets have some serius problems with missing data, especially in condition and building material
@@ -227,7 +261,6 @@ In the next steps will be checked correlation between NAs and other variable, fo
 -   code binary, categorical variables
 
 -   exclude non binar variables
-
 
 ```{r warning=FALSE}
 # Coding NAs
@@ -338,38 +371,76 @@ grubbs_test_buy["p.value",][grubbs_test_buy["p.value",] < 0.05]
 
 Grubbs test allows us defining features with potential outliers.
 
-```{r}
+#### Outliers visualization for the 'buy' data set
+
+```{r warning=FALSE}
 # boxplots buy
-boxplot(data_buy[c("schoolDistance", "postOfficeDistance","kindergartenDistance",
-                   "restaurantDistance", "pharmacyDistance")], 
-        main="boxplot of distances - 'buy' dataset", 
-        cex.axis=0.85)
-boxplot(data_buy[c("floor", "floorCount")], 
-        main="boxplot of floor and floor count - 'buy' dataset", 
-        cex.axis=0.85)
-boxplot(data_buy[c("poiCount")],
-        main="boxplot of number of places within a 500m - 'buy' dataset", 
-        cex.axis=0.85)
-boxplot(data_buy[c("price")],
-        main="boxplot of price - 'buy' dataset", 
-        cex.axis=0.85)
+bp1 <- ggplot(pivot_longer(data_buy[c("schoolDistance", "postOfficeDistance","kindergartenDistance", "restaurantDistance", "pharmacyDistance")], cols=c("schoolDistance", "postOfficeDistance","kindergartenDistance", "restaurantDistance", "pharmacyDistance")), aes(name, value)) + 
+  geom_boxplot() +
+  ggtitle("Public destination distance outliers") + 
+  labs(x="", y="Miles") +
+  theme_classic(base_size = 20) +
+  theme(plot.title = element_text(hjust = 0.5))+
+  scale_x_discrete(guide = guide_axis(n.dodge = 2))
+
+bp2 <- ggplot(pivot_longer(data_buy[c("floor", "floorCount")], cols=c("floor", "floorCount")), aes(name, value)) + 
+  geom_boxplot() +
+  ggtitle("Floor and floor count outliers") + 
+  labs(x="", y="Count") +
+  theme_classic(base_size = 20) +
+  theme(plot.title = element_text(hjust = 0.5))
+
+bp3 <- ggplot(pivot_longer(data_buy[c("poiCount")], cols="poiCount"), aes(name, value)) + 
+  geom_boxplot() +
+  ggtitle("PoI count outliers") + 
+  labs(x="", y="Count") +
+  theme_classic(base_size = 20) +
+  theme(plot.title = element_text(hjust = 0.5))
+
+bp4 <- ggplot(pivot_longer(data_buy[c("price")], cols="price"), aes(name, value)) + 
+  geom_boxplot() +
+  ggtitle("Price outliers") + 
+  labs(x="", y="PLN") +
+  theme_classic(base_size = 20) +
+  theme(plot.title = element_text(hjust = 0.5))
+
+ggarrange(bp1, bp2, bp3, bp4, ncol = 2, nrow = 2)
 ```
 
-```{r}
+#### Outliers visualization for the 'rent' data set
+
+```{r warning=FALSE}
 # boxplots rent
-boxplot(data_rent[c("schoolDistance", "postOfficeDistance",
-                   "restaurantDistance", "pharmacyDistance")], 
-        main="boxplot of distances - 'rent' dataset", 
-        cex.axis=0.85)
-boxplot(data_rent[c("floor", "floorCount")], 
-        main="boxplot of floor and floor count - 'rent' dataset", 
-        cex.axis=0.85)
-boxplot(data_rent[c("poiCount")], 
-        main="boxplot of number of places within a 500m - 'rent' dataset", 
-        cex.axis=0.85)
-boxplot(data_rent[c("price")],
-        main="boxplot of price - 'rent' dataset", 
-        cex.axis=0.85)
+bp1 <- ggplot(pivot_longer(data_rent[c("schoolDistance", "postOfficeDistance","kindergartenDistance", "restaurantDistance", "pharmacyDistance")], cols=c("schoolDistance", "postOfficeDistance","kindergartenDistance", "restaurantDistance", "pharmacyDistance")), aes(name, value)) + 
+  geom_boxplot() +
+  ggtitle("Public destination distance outliers") + 
+  labs(x="", y="Miles") +
+  theme_classic() +
+  theme(plot.title = element_text(hjust = 0.5))+
+  scale_x_discrete(guide = guide_axis(n.dodge = 2))
+
+bp2 <- ggplot(pivot_longer(data_rent[c("floor", "floorCount")], cols=c("floor", "floorCount")), aes(name, value)) + 
+  geom_boxplot() +
+  ggtitle("Floor and floor count outliers") + 
+  labs(x="", y="Count") +
+  theme_classic() +
+  theme(plot.title = element_text(hjust = 0.5))
+
+bp3 <- ggplot(pivot_longer(data_rent[c("poiCount")], cols="poiCount"), aes(name, value)) + 
+  geom_boxplot() +
+  ggtitle("PoI count outliers") + 
+  labs(x="", y="Count") +
+  theme_classic() +
+  theme(plot.title = element_text(hjust = 0.5))
+
+bp4 <- ggplot(pivot_longer(data_rent[c("price")], cols="price"), aes(name, value)) + 
+  geom_boxplot() +
+  ggtitle("Price outliers") + 
+  labs(x="", y="PLN") +
+  theme_classic() +
+  theme(plot.title = element_text(hjust = 0.5))
+
+ggarrange(bp1, bp2, bp3, bp4, ncol = 2, nrow = 2)
 ```
 
 The boxplots exhibit a dense concentration of outliers, with no observations noticeably separated from the rest. This suggests that the detected outliers are not due to erroneous data but rather a result of a fat-tailed distribution in the given features.
@@ -401,10 +472,12 @@ print("price outliers related to the original dataset in % - rent")
 round((length(rent_outliers$price)/length(data_rent$price)) * 100,1) 
 ```
 
+#### Taking a closer look at the rent outliers
+
 ```{r}
 # Taking a closer look at the rent outliers
-data_rent[data_rent$price == min(data_rent$price), ]
-data_rent[data_rent$price == max(data_rent$price), ]
+knitr::kable(data_rent[data_rent$price == min(data_rent$price), ][c("city", "price", "squareMeters", "poiCount")])
+knitr::kable(data_rent[data_rent$price == max(data_rent$price), ][c("city", "price", "squareMeters", "poiCount")])
 
 ```
 
@@ -412,8 +485,8 @@ While 346 PLN for rent may seem low, there are multiple observations close to th
 
 ```{r}
 # Taking a closer look at the buy outlier
-data_buy[data_buy$price == min(data_buy$price), ]
-data_buy[data_buy$price == max(data_buy$price), ]
+knitr::kable(data_buy[data_buy$price == min(data_buy$price), ][c("city", "price", "squareMeters", "poiCount")])
+knitr::kable(data_buy[data_buy$price == max(data_buy$price), ][c("city", "price", "squareMeters", "poiCount")])
 ```
 
 For apartments listed for sale, neither a price of 1,500,000 PLN nor 3,250,000 PLN appears alarming or unusual. There are multiple listings with prices close to these values, suggesting they are within a reasonable range.
@@ -444,11 +517,11 @@ Data validation ensures data correctness by verifying logical consistency and id
 # Data validation
 RULE <- editfile("RULES")
 violated_buy <- violatedEdits(RULE, data_buy)
-summary(violated_buy)
+# summary(violated_buy)
 
 RULE <- editfile("RULES")
 violated_rent <- violatedEdits(RULE, data_rent)
-summary(violated_rent)
+# summary(violated_rent)
 ```
 
 #### Data imputation
@@ -562,21 +635,21 @@ write.csv(complete_data_rent,"clean_rent.csv")
 ## Visualizations
 
 ```{r upload the data, include=FALSE}
-# complete_buy <- read.csv("clean_buy.csv")
-# complete_buy <- complete_buy %>% 
-#   select(-X)
-# complete_rent <- read.csv("clean_rent.csv")
-# complete_rent <- complete_rent %>% 
-#   select(-X)
+complete_data_buy <- read.csv("clean_buy.csv")
+complete_data_buy <- complete_data_buy %>%
+  select(-X)
+complete_data_rent <- read.csv("clean_rent.csv")
+complete_data_rent <- complete_data_rent %>%
+  select(-X)
 # or
-complete_buy <- complete_data_buy
-complete_rent <- complete_data_rent
+# complete_data_buy <- complete_data_buy
+# complete_data_rent <- complete_data_rent
 ```
 
 ```{r}
-total_median_buy <- median(complete_buy$price)
+total_median_buy <- median(complete_data_buy$price)
 
-plot_median_buy <- complete_buy %>%
+plot_median_buy <- complete_data_buy %>%
   group_by(city) %>%
   summarise(median_price = median(price)) %>%
   ggplot(aes(x = reorder(city, median_price), 
@@ -593,9 +666,9 @@ plot_median_buy <- complete_buy %>%
   theme(plot.title = element_text(hjust = 0.5))
 
 
-total_median_rent <- median(complete_rent$price)
+total_median_rent <- median(complete_data_rent$price)
 
-plot_median_rent <- complete_rent %>%
+plot_median_rent <- complete_data_rent %>%
   group_by(city) %>%
   summarise(median_price = median(price)) %>%
   ggplot(aes(x = reorder(city, median_price), 
@@ -616,8 +689,8 @@ grid.arrange(plot_median_buy, plot_median_rent, ncol = 2)
 
 There are highest prices for housing purchasing in the largest polish cities as it follows from the graph. The highest prices are in Warsaw, Krakow and Gdansk, while the cheapest housings are in Czestochowa, Radom and Bydgoszcz. The rent prices are a little more close in terms of the median values, nevertheless there is an outlier - capital city Warsaw, where the median is over 30% higher than in other cities.
 
-```{r}
-ggplot(complete_buy, aes(x = squareMeters, y = price)) +
+```{r message=FALSE, warning=FALSE}
+ggplot(complete_data_buy, aes(x = squareMeters, y = price)) +
   geom_point(alpha = 0.1) +
   geom_smooth(method = "lm", color = "red") +
   facet_wrap(~city) +
@@ -629,7 +702,7 @@ ggplot(complete_buy, aes(x = squareMeters, y = price)) +
 There is a clearly visible positive correlation between the size of an apartment and its price. The slope of the read line (smoothing) is the greatest for the cities with the most expensive apartments, so the result is correlated with conclusions made earlier.
 
 ```{r}
-complete_buy %>%
+complete_data_buy %>%
   gather(amenity, has_amenity, c(hasBalcony, hasElevator, hasParkingSpace, hasStorageRoom, hasSecurity, )) %>%
   ggplot(aes(x = has_amenity, y = price)) +
   geom_boxplot(fill = "lightblue") +
@@ -642,7 +715,7 @@ complete_buy %>%
 The trend is as expected: the presence of amenities increases the price of housing, while there is an outlier amenity - storage room. The median price for housings with a storage room is lower than without it. The difference in price for the categories is plotted on the next graph.
 
 ```{r}
-complete_buy %>%
+complete_data_buy %>%
   gather(amenity, has_amenity, c(hasBalcony, hasElevator, hasParkingSpace, hasStorageRoom, hasSecurity)) %>%
   group_by(amenity) %>%
   mutate(
@@ -669,7 +742,7 @@ complete_buy %>%
 Amenities (all but storageRoom) seem to have a noticeable positive impact on price of the apartment.
 
 ```{r}
-distance_vars_buy <- select(complete_buy, contains("Distance"), price)
+distance_vars_buy <- select(complete_data_buy, contains("Distance"), price)
 correlation_matrix_buy <- cor(distance_vars_buy, use = "complete.obs")
 corrplot(correlation_matrix_buy, method = "color")
 ```
@@ -677,21 +750,21 @@ corrplot(correlation_matrix_buy, method = "color")
 There is no strong correlation found between the level of prices and distance to public places. However there is pretty solid positive correlation between variables of distances to public places.
 
 ```{r}
-distance_vars_rent <- select(complete_rent, contains("Distance"), price)
+distance_vars_rent <- select(complete_data_rent, contains("Distance"), price)
 correlation_matrix_rent <- cor(distance_vars_rent, use = "complete.obs")
 corrplot(correlation_matrix_rent, method = "color")
 ```
 
 Similar trends are observed on a rent market data set.
 
-```{r warning=FALSE}
-plot_age_buy <- ggplot(complete_buy, aes(x = buildYear, y = price)) +
+```{r message=FALSE, warning=FALSE}
+plot_age_buy <- ggplot(complete_data_buy, aes(x = buildYear, y = price)) +
   geom_smooth() +
   labs(title = "Price vs Building Age – Purchase") +
   scale_y_continuous(labels = label_comma()) +
   theme(plot.title = element_text(hjust = 0.5))
 
-plot_age_rent <- ggplot(complete_rent, aes(x = buildYear, y = price)) +
+plot_age_rent <- ggplot(complete_data_rent, aes(x = buildYear, y = price)) +
   geom_smooth() +
   labs(title = "Price vs Building Age – Rent") +
   scale_y_continuous(labels = label_comma()) +
@@ -702,7 +775,7 @@ grid.arrange(plot_age_buy, plot_age_rent, ncol = 2)
 Interesting things can be observed – model is less certain about the smooth price for apartments for rent built in the 70s, which might suggest there's less of them available for rent. This phenomena is correlated with modern market rules, as the demand on the new apartments is higher. The apartments in very old buildings tend to be very expensive, but there are not many of them. Commie blocks are the least expensive for both rent and purchase. Out of modern buildings those built around 2008 seem to be the most expensive. The prices for the newest buildings seem to be falling with each year.
 
 ```{r}
-ggplot(complete_buy, aes(x = condition, y = price)) +
+ggplot(complete_data_buy, aes(x = condition, y = price)) +
   geom_violin(fill = "beige") +
   theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
   labs(title = "Price Distribution by Property Condition") +
@@ -717,18 +790,16 @@ There is no significant influence of housing condition on the price level.
 ### Summary statistics
 
 ```{r}
-data_buy <- complete_buy
-data_rent <- complete_rent
+data_buy <- complete_data_buy
+data_rent <- complete_data_rent
 
 data_buy <- data_buy %>% 
   mutate(price_per_m2 = price / squareMeters)
 data_rent <- data_rent %>% 
   mutate(price_per_m2 = price / squareMeters)
 
-print(dfSummary(data_buy, na.col=FALSE, style="multiline", 
-                plain.ascii=FALSE, headings = FALSE, graph.magnif = .8),
-      method = "render"
-)
+print(dfSummary(data_buy, na.col=FALSE, headings=FALSE, valid.col=FALSE),
+      method = "render")
 ```
 
 Summary table contains information about every column in the purchase data set. It can be noticed from the table that
@@ -743,19 +814,17 @@ Summary table contains information about every column in the purchase data set. 
 8)  Almost 90% of apartments are owned on condominium agreement.
 
 ```{r}
-print(dfSummary(data_rent, na.col=FALSE, style="multiline", 
-                plain.ascii=FALSE, headings = FALSE, graph.magnif = .8),
-      method = "render"
-)
+print(dfSummary(data_rent, na.col=FALSE, headings=FALSE, valid.col=FALSE),
+      method = "render")
 ```
 
 Rental market data in general follow the same trend, however there are some differences:
 
-2)  Apartment buildings are the most common type of building the housing is located in;
-3)  Area of the apartments is a bit lower (average 53.4 m²) than in case of purchase market;
-4)  Two room apartments are the most represented category with over 57% of items;
-5)  The average of build year is higher for rental market (by 12 years), which is explained by higher attractiveness of modern buildings for tenants;
-6)  97.7% of the apartments is declared to be in premium condition.
+1)  Apartment buildings are the most common type of building the housing is located in;
+2)  Area of the apartments is a bit lower (average 53.4 m²) than in case of purchase market;
+3)  Two room apartments are the most represented category with over 57% of items;
+4)  The average of build year is higher for rental market (by 12 years), which is explained by higher attractiveness of modern buildings for tenants;
+5)  97.7% of the apartments is declared to be in premium condition.
 
 ### Share of market by city with contingency tables
 
@@ -785,7 +854,7 @@ arrange(table, desc(Share)) %>%
 
 ```
 
-Warsaw has even larger part of the rent market over 40%, growth also noticeable in the market share of Krakow (+4%). Remaining cities have minor shares of this market (under 10% each).
+Warsaw has even larger part of the rent market almost 40%, growth also noticeable in the market share of Krakow (+4%). Remaining cities have minor shares of this market (under 10% each).
 
 ### Price distribution shape with tabular data
 
@@ -815,7 +884,7 @@ plot(tab_accuracy, pal=pcol, ylab='Cumulative %')
 The price has skewed distribution distribution. A histogram was build to show how many housings fall in certain price levels from minimum price 150000 up to the maximum 3250000 by 100000 PLN. The histogram shows that most represented category is 600-700 thousands PLN. The partition accuracy was checked with the tabular accuracy index, which shows high tabular accuracy and goodness of fit.
 
 ```{r contingency_table2.2}
-range(data_rent$price)
+# range(data_rent$price)
 limits <- seq(min(data_rent$price) - 300, max(data_rent$price) + 300, by=500)
 
 limits_factor <- cut(data_rent$price, limits)
@@ -838,7 +907,7 @@ plot(tab_accuracy, pal=pcol, ylab='Cumulative %')
 
 The shapes of the rental market distribution is narrower than purchase market one, which can be explained by the target groups of these offers (often these group cannot afford to buy a housing).
 
-```{r}
+```{r warning=FALSE}
 pl1 <- data_buy %>%
   ggplot(aes(x=price_per_m2)) +
   geom_density(color="#69b3a2", alpha=0.8) +
@@ -868,7 +937,7 @@ grid.arrange(pl1+theme(legend.position="top"),
 
 This image shows density plots for the price per square meter in both the purchase and rental markets. The distribution graphs of prices per square meter are less skewed than normal prices and additionally:
 
-1.  Purchase Market (Left Plot)
+1.  Purchase Market
 
     -   The distribution appears right-skewed (positively skewed), meaning more properties have prices below the median, with some high-priced outliers.
 
@@ -876,7 +945,7 @@ This image shows density plots for the price per square meter in both the purcha
 
     -   There's a peak around **10,000-15,000 PLN**, suggesting a common price range.
 
-2.  Rental Market (Right Plot)
+2.  Rental Market
 
     -   Also right-skewed, but with a sharper peak and a steeper decline.
 
@@ -904,7 +973,9 @@ addmargins(round(prop.table(type_across_cities, 1) * 100, 2), 2) %>%
 
 The situation is somewhat different for the rental market. There is an increase in apartment buildings type offers resulting in an incline in percentage of block of flats. Quantity of offers in tenements is also reduced insignificantly.
 
-```{r statistical_variables}
+#### Descriptive characteristics of price per m² in purchase data set
+
+```{r echo=FALSE}
 group_by(data_buy, type) %>%
   reframe(
     mean = mean(price_per_m2),
@@ -918,6 +989,13 @@ group_by(data_buy, type) %>%
   kable() %>% 
   kable_styling()
 
+```
+
+The **most expensive** in terms of price per square meter are housings in **apartment buildings**. Their average price is **26.8%** more for blocks of flats and **20.1%** for tenements in purchasing. The smallest **standard deviation** value for blocks of flats in both markets can be explained by average characteristics of this type of housing: locations and conditions are close in different blocks of flats or apartments, while there are old, cheaper tenements and relatively small amount of the new ones in perfect condition and location so the deviation is significantly larger. Positive values of **skewness** indicate the tail of the distribution is on the right, which means the amount of more expensive apartments is fading more gradually than the cheaper ones. **Kurtosis** indicates quite peaked distributions for each category.
+
+#### Descriptive characteristics of price per m² in rental data set
+
+```{r echo=FALSE, warning=FALSE}
 group_by(data_rent, type) %>%
   reframe(
     mean = mean(price_per_m2),
@@ -931,6 +1009,11 @@ group_by(data_rent, type) %>%
   ) %>% 
   kable() %>% 
   kable_styling()
+```
+
+Apartments in apartment buildings have the highest average rent (75.77 PLN/m²) and median (72.38 PLN/m²), suggesting they tend to be more expensive. Block of flats has the lowest average (61.56 PLN/m²) and median (59.26 PLN/m²), meaning they are generally more affordable, while tenements are in between as it was for purchasing data set. Standard deviation is highest for tenements (24.05 PLN/m²) and apartment buildings (23.23 PLN/m²), indicating a wider spread in rental prices. The maximum rental price is quite high for all categories (\~189 PLN/m²), suggesting some luxury or premium properties significantly impact the upper range. Apartment buildings (5.14) and block of flats (5.42) have higher kurtosis, indicating a sharper peak with more extreme values. Tenements (3.90) have a more moderate kurtosis, meaning a more balanced distribution without extreme outliers.
+
+```{r statistical_variables}
 
 mu_buy <- ddply(data_buy, "type", summarise, grp.mean=mean(price_per_m2))
 
@@ -940,7 +1023,8 @@ pl1 <- ggplot(data_buy, aes(x=price_per_m2, color=type)) +
   geom_vline(data=mu_buy, aes(xintercept=grp.mean, color=type), linetype="dashed") +    
   scale_fill_manual(values=c("#999999", "#E69F00", "#56B4E9")) +
   theme_classic() +
-  labs(x="PLN per square meter", y="Density", subtitle  = "Purchase market") 
+  labs(x="PLN per square meter", y="Density", subtitle  = "Purchase market") +
+  theme(plot.title = element_text(hjust = 0.5))
 
 mu_rent <- ddply(data_rent, "type", summarise, grp.mean=mean(price_per_m2))
 
@@ -949,7 +1033,8 @@ pl2 <- ggplot(data_rent, aes(x=price_per_m2, color=type)) +
   geom_vline(data=mu_rent, aes(xintercept=grp.mean, color=type), linetype="dashed") +   
   scale_fill_manual(values=c("#999999", "#E69F00", "#56B4E9")) + 
   theme_classic() +
-  labs(x="PLN per square meter", y="Density", subtitle  = "Rental market") 
+  labs(x="PLN per square meter", y="Density", subtitle  = "Rental market") +
+  theme(plot.title = element_text(hjust = 0.5))
 
 grid.arrange(pl1+theme(legend.position="top"),
     pl2+theme(legend.position="top"),
@@ -958,13 +1043,13 @@ grid.arrange(pl1+theme(legend.position="top"),
 )
 ```
 
-The **most expensive** in terms of price per square meter are housings in **apartment buildings**. Their average price is **26.8%** more for blocks of flats and **20.1%** for tenements in purchasing, whereas it is **19.38%** more for blocks of flats and **6.4%** in case of tenements in rental. The smallest **standard deviation** value for blocks of flats in both markets can be explained by average characteristics of this type of housing: locations and conditions are close in different blocks of flats or apartments, while there are old, cheaper tenements and relatively small amount of the new ones in perfect condition and location so the deviation is significantly larger. Positive values of **skewness** indicate the tail of the distribution is on the right, which means the amount of more expensive apartments is fading more gradually than the cheaper ones. **Kurtosis** indicates quite peaked distributions for each category.
+This image presents density plots for the distribution of price per square meter in both the purchase and rental markets, categorized by housing type (apartment buildings, blocks of flats and tenements). Purchase prices are more spread out than rental prices, particularly for apartment buildings. Rental prices are relatively more concentrated, with fewer extreme values. Blocks of flats consistently show the lowest prices and least variation, making them the most affordable option. Apartment buildings are the most expensive, both in purchase and rental markets, with more high-priced outliers.
 
 ### Housing type vs building material with mosaic plots
 
 ```{r}
-mosaicplot(table(data_buy$type, data_buy$buildingMaterial), color = c("darkred", "grey"), xlab ="Type of housing", ylab = "Building material", main="The relationship between the type of housing and the construction material (")
-mosaicplot(table(data_rent$type, data_rent$buildingMaterial), color = c("darkred", "grey"), xlab ="Type of housing", ylab = "Building material", main="The relationship between the type of housing and the construction material")
+mosaicplot(table(data_buy$type, data_buy$buildingMaterial), color = c("darkred", "grey"), xlab ="Type of housing", ylab = "Building material", main="The relationship between the type of housing\n and the construction material")
+mosaicplot(table(data_rent$type, data_rent$buildingMaterial), color = c("darkred", "grey"), xlab ="Type of housing", ylab = "Building material", main="The relationship between the type of housing\n and the construction material")
 
 ```
 
@@ -974,11 +1059,11 @@ The majority of housings is build of brick, while this material is used more fre
 
 Statistical tests are conducted to determine whether observed data patterns are due to chance or represent real effects. They help in making objective decisions, validating hypotheses, and drawing conclusions in research by measuring relationships, differences, or associations within data sets.
 
+### Statistical significance of price median difference between cities
+
 The main purpose of the statistical test we are going to perform is to determine which variables have a statistically significant impact on both rent and buy prices.
 
 ```{r}
-# statistical significance of price median difference between cities
-
 palette_colors <- viridis(length(unique(complete_data_buy$city)))
 
 complete_data_buy %>% 
@@ -990,7 +1075,8 @@ complete_data_buy %>%
     title = "Distribution of buy price across cities - buy dataset",
     palette = "default_ucscgb",
     package = "ggsci"
-  )
+  ) +
+  scale_x_discrete(guide = guide_axis(angle = 90))
 
 complete_data_rent %>% 
   ggbetweenstats(
@@ -1001,11 +1087,14 @@ complete_data_rent %>%
     title = "Distribution of rent price across cities - rent dataset",
     palette = "default_ucscgb",
     package = "ggsci"
-  )
+  ) +
+  scale_x_discrete(guide = guide_axis(angle = 90))
 
 ```
 
 Based on Welch's test, we obtained a p-value close to 0, so we reject the null hypothesis of equal means between populations in both the buy and rent data sets. This means that the city statistically significantly differentiates both rent and buy prices. However, an effect size of 0.86 implies that this differentiation has a moderate magnitude.
+
+### Statistical significance differentiation of price by amenities
 
 ```{r}
 amentities <- c("hasBalcony", "hasElevator", "hasParkingSpace", "hasStorageRoom", "hasSecurity")
@@ -1070,4 +1159,16 @@ Finally, condition of flat in both rent and buy data sets also seem to different
 
 ## Conclusions
 
-TODO:
+This project provides a comprehensive analysis of the real estate market, utilizing statistical methods and visualizations to uncover key trends and insights. The study examines data structure, performs data cleansing, and addresses outliers to ensure accuracy. Through descriptive analysis and summary statistics, the project identifies variations in market share across cities and explores price distribution patterns.
+
+The following problems were explored among others:
+
+-   A data-driven overview of real estate pricing trends.
+
+-   Identification of key factors influencing property prices.
+
+-   Insights into how housing types and amenities impact pricing.
+
+-   Statistical validation of differences in pricing across various cities.
+
+This project aims to contribute to a deeper understanding of real estate market dynamics, enabling informed decision-making for investors, buyers, and policymakers.

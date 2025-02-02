@@ -1283,8 +1283,8 @@ for (i in amentities) {
         palette = "default_ucscgb",
         package = "ggsci",
         title = i,
-        centrality.label.args = list(size  = 9),
-        ggplot.component = list(theme(plot.subtitle = element_text(size = 7, face = "bold")))
+        centrality.label.args = list(size  = 7),
+        ggplot.component = list(theme(plot.subtitle = element_text(size = 10, face = "bold")))
       ) +
       theme(plot.title = element_text(hjust = 0.5, size = 35), text = element_text(size = 25))  +
       xlab("")
@@ -1309,8 +1309,8 @@ for (i in amentities) {
         palette = "default_ucscgb",
         package = "ggsci",
         title = i,
-        centrality.label.args = list(size  = 9),
-        ggplot.component = list(theme(plot.subtitle = element_text(size = 7, face = "bold")))
+        centrality.label.args = list(size  = 7),
+        ggplot.component = list(theme(plot.subtitle = element_text(size = 10, face = "bold")))
       ) +
       theme(plot.title = element_text(hjust = 0.5, size = 35), text = element_text(size = 25))  +
       xlab("")
@@ -1333,8 +1333,8 @@ pl1 <-  ggbetweenstats(complete_data_buy,
     palette = "default_ucscgb",
     package = "ggsci",
     title = "Buy data set",
-    centrality.label.args = list(size  = 13),
-    ggplot.component = list(theme(plot.subtitle = element_text(size = 7, face = "bold")))
+    centrality.label.args = list(size  = 10),
+    ggplot.component = list(theme(plot.subtitle = element_text(size = 10, face = "bold")))
   ) +
   theme(plot.title = element_text(hjust = 0.5, size = 35), text = element_text(size = 25))  
 
@@ -1345,8 +1345,8 @@ pl2 <-  ggbetweenstats(complete_data_rent,
     palette = "default_ucscgb",
     package = "ggsci",
     title = "Rental data set",
-    centrality.label.args = list(size  = 13),
-    ggplot.component = list(theme(plot.subtitle = element_text(size = 7, face = "bold")))
+    centrality.label.args = list(size  = 10),
+    ggplot.component = list(theme(plot.subtitle = element_text(size = 12, face = "bold")))
   ) +
   theme(plot.title = element_text(hjust = 0.5, size = 35), text = element_text(size = 25)) +
   ylab("")

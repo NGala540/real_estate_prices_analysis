@@ -231,7 +231,11 @@ knitr::kable(data.frame(miss_var_summary(data_rent)))
 
 Both data sets have some serious problems with missing data, especially in condition and building material.
 
-<h4 style="text-align: center;font-weight: bold;">Data set 'buy'<h4>
+<h4 style="text-align: center;font-weight: bold;">
+
+Data set 'buy'
+
+<h4>
 
 ```{r}
 # Upset plot of missing data and number of missings by a city - buy dataset
@@ -251,7 +255,12 @@ gg_miss_fct(data_buy[,c(NA_vector_buy, "city")], fct = city) +
 
 An analysis of missing values in the 'buy' dataset using an upset plot reveals some connections between condition, building material, and type. However, given the scale of missing values in these features, their mutual occurrence does not appear to be significant. On the other hand, in Gdańsk and Gdynia, the 'condition' attribute is missing more frequently than in other cities, while in Częstochowa, the 'build year' is notably absent more often.
 
-<h4 style="text-align: center;font-weight: bold;">Data set 'rent'<h4>
+<h4 style="text-align: center;font-weight: bold;">
+
+Data set 'rent'
+
+<h4>
+
 ```{r, fig.width=10, fig.height=8}
 # Upset plot of missing data and number of missings by a city - rent dataset
 NA_vector_rent <- c("condition", "floor", "buildYear", "floorCount", "collegeDistance",
@@ -390,7 +399,11 @@ grubbs_test_buy["p.value",][grubbs_test_buy["p.value",] < 0.05]
 
 Grubbs test allows us defining features with potential outliers.
 
-<h4 style="text-align: center;font-weight: bold;">Outliers visualization for the 'buy' data set<h4>
+<h4 style="text-align: center;font-weight: bold;">
+
+Outliers visualization for the 'buy' data set
+
+<h4>
 
 ```{r warning=FALSE}
 # boxplots buy
@@ -430,7 +443,11 @@ bp4 <- ggplot(pivot_longer(data_buy[c("price")], cols="price"), aes(name, value)
 ggarrange(bp1, bp2, bp3, bp4, ncol = 2, nrow = 2)
 ```
 
-<h4 style="text-align: center;font-weight: bold;">Outliers visualization for the 'rent' data set<h4>
+<h4 style="text-align: center;font-weight: bold;">
+
+Outliers visualization for the 'rent' data set
+
+<h4>
 
 ```{r warning=FALSE}
 # boxplots rent
@@ -776,7 +793,12 @@ complete_data_buy %>%
 Amenities (all but storageRoom) seem to have a noticeable positive impact on price of the apartment.
 
 ### Correlation exploration
-<h4 style="text-align: center;font-weight: bold;">Purchase data set<h4>
+
+<h4 style="text-align: center;font-weight: bold;">
+
+Purchase data set
+
+<h4>
 
 ```{r}
 distance_vars_buy <- select(complete_data_buy, contains("Distance"), price)
@@ -787,7 +809,11 @@ corrplot(correlation_matrix_buy, method = "color", addCoef.col = 1,
 
 There is no strong correlation found between the level of prices and distance to public places. However there is pretty solid positive correlation between variables of distances to public places.
 
-<h4 style="text-align: center;font-weight: bold;">Rental data set<h4>
+<h4 style="text-align: center;font-weight: bold;">
+
+Rental data set
+
+<h4>
 
 ```{r}
 distance_vars_rent <- select(complete_data_rent, contains("Distance"), price)
@@ -1095,13 +1121,21 @@ This image presents density plots for the distribution of price per square meter
 
 ### Housing type vs building material with mosaic plots
 
-<h4 style="text-align: center;font-weight: bold;">Purchase market<h4>
+<h4 style="text-align: center;font-weight: bold;">
+
+Purchase market
+
+<h4>
 
 ```{r, fig.width=10, fig.height=6}
 mosaicplot(table(data_buy$type, data_buy$buildingMaterial), color = c("darkred", "grey"), main="", cex.axis=2)
 ```
 
-<h4 style="text-align: center;font-weight: bold;">Rental market<h4>
+<h4 style="text-align: center;font-weight: bold;">
+
+Rental market
+
+<h4>
 
 ```{r, fig.width=10, fig.height=6}
 mosaicplot(table(data_rent$type, data_rent$buildingMaterial), color = c("darkred", "grey"), main="", cex.axis=2)
@@ -1239,8 +1273,8 @@ The following problems were explored among others:
 
 ### Findings and insights
 
-Certain cities (e.g., Gdańsk, Gdynia, Częstochowa) show significant missing data in condition and build year attributes, however there is no strong correlation between missing values and other features.
-The highest property prices are in Warsaw, Krakow, and Gdansk, while the cheapest cities are Czestochowa, Radom, and Bydgoszcz. Property prices follow a log-normal distribution, while high-priced properties are concentrated in city centers with dense POIs. No strong correlation is found between price levels and proximity to public places, but distances between amenities show a strong relationship. 
-Rental and purchase price distributions differ significantly, as confirmed by Welch’s test (p-value ≈ 0). Rental prices are more uniform, except in Warsaw, where the median rent is 30% higher than in other cities. Rental price trends suggest fewer apartments from the 1970s are available for rent, while older buildings are more expensive but less common. A positive correlation exists between apartment size and price, with larger price increases in cities with higher property costs. Amenities generally increase housing prices, except for storage rooms, which correlate with lower prices, but the effect size is small (e.g., -0.14 for balconies, -0.57 for elevators). Housing condition has a moderate impact on prices, but its effect size is limited.
+Certain cities (e.g., Gdańsk, Gdynia, Częstochowa) show significant missing data in condition and build year attributes, however there is no strong correlation between missing values and other features. The highest property prices are in Warsaw, Krakow, and Gdansk, while the cheapest cities are Czestochowa, Radom, and Bydgoszcz. Property prices follow a fat-tailed distribution, while high-priced properties are concentrated in city centers with dense POIs. No strong correlation is found between price levels and proximity to public places, but distances between amenities show a strong relationship.
+
+Rental and purchase price distributions by cities, amenities and condition differ significantly, as confirmed by Welch’s test (p-value ≈ 0). Rental prices are more uniform, except in Warsaw, where the median rent is 30% higher than in other cities. A positive correlation exists between apartment size and price, with larger price increases in cities with higher property costs. Amenities generally increase housing prices, except for storage rooms, which correlate with lower prices, but the effect size is small (e.g., -0.14 for balconies, -0.57 for elevators). Housing condition has a moderate impact on prices, but its effect size is limited.
 
 The study confirms that city location, property size, and amenities significantly influence real estate prices. While rental prices show more uniformity, purchase prices exhibit stronger variations based on property type and city. Warsaw dominates both markets, with modern buildings losing value over time. Statistical tests validate these findings, providing insights for investors, buyers, and policymakers.
